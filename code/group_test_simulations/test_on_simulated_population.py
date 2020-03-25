@@ -43,12 +43,13 @@ def get_n_random_samples(A,ViralLoad,vol_total,vol_sampled,LOD):
 			y[i] = 1
 	return x_true,y,idx_n
 
-def run_test(A,ViralLoad,ViralTime,vol_total,vol_sampled,LOD,e,itr=2500):
+def run_test(A,ViralLoad,InfectionTime,OnsetTime,vol_total,vol_sampled,LOD,e,itr=2500):
 	true_pos = 0
 	total_pos = 0
 	T = []
 	Vl = []
-	Vt = []
+	Vi = []
+	Vo = []
 	R = []
 	for __ in range(itr):
 		x,y,idx_n = get_n_random_samples(A,ViralLoad,vol_total,vol_sampled,LOD)
@@ -66,32 +67,26 @@ def run_test(A,ViralLoad,ViralTime,vol_total,vol_sampled,LOD,e,itr=2500):
 			ki = np.where(x)[0]
 			R.append(x[ki]*x_hat3[ki])
 			Vl.append(ViralLoad[idx_n][ki])
-			Vt.append(ViralTime[idx_n][ki])
+			Vi.append(InfectionTime[idx_n][ki])
+			Vo.append(OnsetTime[idx_n][ki])
 	T = np.array(T)
 	if len(R):
 		R = np.hstack(R)
 		Vl = np.hstack(Vl)
-		Vt = np.hstack(Vt)
+		Vi = np.hstack(Vi)
+		Vo = np.hstack(Vo)
 	efficiency_avg = A.shape[1]/(A.shape[0] + np.average(T))
 	if total_pos > 0:
 		recall = true_pos/total_pos
 	else:
 		recall = 1
-	return efficiency_avg, recall, R, Vl, Vt
-
-def relative_infection_time(ViralLoad):
-	# only writing the viral time after infection for the days with non-zero load here (all other days set to -1)
-	time_of_infection = {}
-	ViralTime = np.ones(ViralLoad.shape)*-1
-	for i,t in zip(*np.where(ViralLoad)):
-		if i not in time_of_infection:
-			time_of_infection[i] = t
-		ViralTime[i,t] = t-time_of_infection[i]
-	return ViralTime
+	return efficiency_avg, recall, R, Vl, Vi, Vo
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--viral-load-matrix', help='Path to viral load matrix (individuals x time points)')
+	parser.add_argument('--infection-time', help='Path to time of infection for each individual')
+	parser.add_argument('--onset-time', help='Path to time of symptom onset for each individual')
 	parser.add_argument('--expected-pos-prob', help='1-expected faulty test rate (for setting error correction threshold)',type=float)
 	parser.add_argument('--savepath', help='Path to save summary figure')
 	parser.add_argument('--n-individuals', help='Number of individuals to test (n)',type=int)
@@ -106,11 +101,19 @@ if __name__ == '__main__':
 	ViralLoad = [[float(l) for l in line.strip().split()] for line in f]
 	f.close()
 	ViralLoad = 10**np.array(ViralLoad) - 1
-	ViralTime = relative_infection_time(ViralLoad)
+	f = open(args.infection_time)
+	InfectionTime = [float(line.strip()) for line in f]
+	f.close()
+	InfectionTime = np.array(InfectionTime)
+	f = open(args.onset_time)
+	OnsetTime = [float(line.strip()) for line in f]
+	f.close()
+	OnsetTime = np.array(OnsetTime)
 	E_avg = np.zeros(ViralLoad.shape[1])
 	Recall_combined = np.zeros(ViralLoad.shape[1])
-	Recall_n, Vl, Vt = [],[],[]
+	Recall_n, Vl, Vi, Vo = [],[],[],[]
 	q = int(min(args.max_dilution/args.n_individuals*args.m_pools,args.max_sample_split,args.m_pools/2,np.round(np.log(args.n_individuals))))
+	q = max(q,1)
 	# pooling composition matrix
 	A = random_binary_balanced(args.m_pools,args.n_individuals,q)
 	# number of faulty tests to tolerate
@@ -123,10 +126,11 @@ if __name__ == '__main__':
 	print('volume sampled\t%.1f' % vol_sampled)
 	for t in range(ViralLoad.shape[1]):
 		if ViralLoad[:,t].sum() > 0:
-			ea,rec,r,vl,vt = run_test(A,ViralLoad[:,t],ViralTime[:,t],args.volume_per_swab,vol_sampled,args.LOD,e)
+			ea,rec,r,vl,vi,vo = run_test(A,ViralLoad[:,t],t-InfectionTime,t-OnsetTime,args.volume_per_swab,vol_sampled,args.LOD,e)
 			Recall_n.append(r)
 			Vl.append(vl)
-			Vt.append(vt)
+			Vi.append(vi)
+			Vo.append(vo)
 		else:
 			# save time by not running simulation if there are no cases
 			# will want to change this if we add technical (eg pcr) false positives
@@ -138,5 +142,6 @@ if __name__ == '__main__':
 	np.save('%s/Recall_combined.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Recall_combined)
 	np.save('%s/Recall_n.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Recall_n)
 	np.save('%s/Vl.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Vl)
-	np.save('%s/Vt.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Vt)
+	np.save('%s/Vi.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Vi)
+	np.save('%s/Vo.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Vo)
 
