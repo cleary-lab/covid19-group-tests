@@ -137,7 +137,7 @@ if __name__ == '__main__':
 			ea,rec = args.n_individuals/args.m_pools, 1
 		E_avg[t] = ea
 		Recall_combined[t] = rec
-		print('Time: %d; Case frequency: %.5f; Efficiency: %.2f; Recall: %.4f; Fraction >LOD: %.4f' % (t,np.average(ViralLoad[:,t] > 0),ea,rec, np.average(ViralLoad[ViralLoad[:,t] > 0,t] > args.LOD)))
+		print('Time: %d; Case frequency: %.5f; Efficiency: %.2f; Sensitivity: %.4f; Fraction >LOD: %.4f' % (t,np.average(ViralLoad[:,t] > 0),ea,rec, np.average(ViralLoad[ViralLoad[:,t] > 0,t] > args.LOD)))
 	np.save('%s/Eff_avg.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),E_avg)
 	np.save('%s/Recall_combined.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Recall_combined)
 	np.save('%s/Recall_n.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Recall_n)
