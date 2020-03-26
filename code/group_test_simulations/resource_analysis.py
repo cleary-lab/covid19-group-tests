@@ -60,16 +60,16 @@ if __name__ == '__main__':
 					effective_tests = n*n_tests*sens
 					if effective_tests > best[0]:
 						best = (effective_tests,n,m)
-			X[j,i] = best[0]
+			X[j,i] = best[0]/(e0*nm_min)
 			_=plt.text(i,j,'%d,%d' % (best[1],best[2]),horizontalalignment='center',verticalalignment='center',color="w",fontsize=8)
-	_=plt.imshow(X,origin='lower',norm=mpl.colors.LogNorm())
+	_=plt.imshow(X,origin='lower')
 	_=plt.xticks(np.arange(len(unique_nm)), labels=unique_nm)
 	_=plt.yticks(np.arange(len(unique_nm)), labels=unique_nm)
 	_=plt.xlabel('Number of swabs')
 	_=plt.ylabel('Number of kits')
 	_=plt.colorbar()
 	_=plt.grid(b=None)
-	_=plt.title('Effective individuals screened (n * sensitivity)')
+	_=plt.title('Effectiveness of optimal design from days %d-%d' % (args.start_time,args.end_time))
 	_=plt.tight_layout()
 	_=plt.savefig('%s/summary.resource.png' % args.resultspath)
 	plt.close()
