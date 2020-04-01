@@ -2,14 +2,14 @@ simulate_epidemic_process <- function(n_indivs, growth_rate, times){
   incidence <- exp(growth_rate*times)/n_indivs
   incidence <- incidence - incidence[1]
   incidence[length(incidence)] <- 0
-  p_not_infected <- prod(1-incidence)  
-  print(paste0("Cumulative incidence to date: ", signif(1-p_not_infected,3)))
+  p_infected <- sum(incidence)
+  print(paste0("Cumulative incidence to date: ", signif(p_infected,3)))
   p1 <- ggplot(tibble(time=times[1:(length(times)-1)],incidence=incidence[1:(length(times)-1)])) +
     ylab("Daily probability of infection") +
     xlab("Time") +
     theme_bw() +
     geom_line(aes(x=time,y=incidence))
-  return(list(plot=p1, incidence=incidence, overall_prob_infection=1-p_not_infected))
+  return(list(plot=p1, incidence=incidence, overall_prob_infection=p_infected))
 }
 
 simulate_infection_times <- function(n, p_infected, incidence){
