@@ -96,6 +96,7 @@ if __name__ == '__main__':
 	parser.add_argument('--max-pool-volume', help='Maximum volume of pooled samples',type=int,default=140)
 	parser.add_argument('--volume-per-swab', help='Volume used per swab in individual test',type=int,default=100)
 	parser.add_argument('--LOD', help='Limit of detection',type=float,default=100)
+	parser.add_argument('--pool-compositions', help='Path to matrix of pool compositions, otherwise random (default)',default=None)
 	args,_ = parser.parse_known_args()
 	f = open(args.viral_load_matrix)
 	ViralLoad = [[float(l) for l in line.strip().split()] for line in f]
@@ -115,7 +116,11 @@ if __name__ == '__main__':
 	q = int(min(args.max_dilution/args.n_individuals*args.m_pools,args.max_sample_split,args.m_pools/2,np.round(np.log(args.n_individuals))))
 	q = max(q,1)
 	# pooling composition matrix
-	A = random_binary_balanced(args.m_pools,args.n_individuals,q)
+	if args.pool_compositions is not None:
+		print('loading pools from: %s' % args.pool_compositions)
+		A = np.load(args.pool_compositions)
+	else:
+		A = random_binary_balanced(args.m_pools,args.n_individuals,q)
 	# number of faulty tests to tolerate
 	e = np.round(2*(1-args.expected_pos_prob)*q) + 1e-7
 	vol_sampled = determine_sampling_volume(A,args.max_pool_volume)
@@ -138,10 +143,10 @@ if __name__ == '__main__':
 		E_avg[t] = ea
 		Recall_combined[t] = rec
 		print('Time: %d; Case frequency: %.5f; Efficiency: %.2f; Sensitivity: %.4f; Fraction >LOD: %.4f' % (t,np.average(ViralLoad[:,t] > 0),ea,rec, np.average(ViralLoad[ViralLoad[:,t] > 0,t] > args.LOD)))
-	np.save('%s/Eff_avg.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),E_avg)
-	np.save('%s/Recall_combined.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Recall_combined)
-	np.save('%s/Recall_n.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Recall_n)
-	np.save('%s/Vl.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Vl)
-	np.save('%s/Vi.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Vi)
-	np.save('%s/Vo.n-%d_m-%d.npy' % (args.savepath,args.n_individuals,args.m_pools),Vo)
+	np.save('%s/Eff_avg.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,q),E_avg)
+	np.save('%s/Recall_combined.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,q),Recall_combined)
+	np.save('%s/Recall_n.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,q),Recall_n)
+	np.save('%s/Vl.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,q),Vl)
+	np.save('%s/Vi.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,q),Vi)
+	np.save('%s/Vo.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,q),Vo)
 
