@@ -56,6 +56,7 @@ simulate_viral_loads <- function(infection_times, onset_times, times, kinetics_p
   viral_loads <- matrix(0, nrow=length(infection_times), ncol=length(times))
   
   for(i in seq_along(infection_times)){
+    if(i %% 1000 == 0) print(i)
     if(infection_times[i] > 0){
       viral_peak <- max(rnorm(1, viral_peak_mean, viral_peak_sd),0.01)
       tp <- runif(1,0,tp_last_day)
