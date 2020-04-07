@@ -1,11 +1,20 @@
 ## Viral kinetics function
 model_func <- function(ts, tp, viral_peak, wane){
+  y <- numeric(length(ts))
   growth <- viral_peak/tp
-  pre_peak <- growth*ts[ts <= tp]
-  post_peak <- viral_peak + wane*tp - wane*(ts[ts > tp])
-  c(pre_peak, post_peak)
+  y[ts <= tp] <- growth*ts[ts <= tp]
+  y[ts > tp] <- viral_peak + wane*tp - wane*(ts[ts > tp])
+  y
 }
-
+## Viral kinetics function
+model_func_tinf <- function(ts, tinf, tp, viral_peak, wane){
+  y <- numeric(length(ts))
+  growth <- viral_peak/tp
+  y[ts < tinf] <- 0
+  y[ts <= tp + tinf & ts > tinf] <- growth*(ts[ts <= tp + tinf & ts > tinf]-tinf)
+  y[ts > tp + tinf] <- viral_peak + wane*tp - wane*(ts[ts > tp + tinf] - tinf)
+  y
+}
 ## Calculate likelihood of observations given model predicted viral loads
 ## Assuming normally distributed measurement error, with censoring
 ## at upper and lower limtis of detection

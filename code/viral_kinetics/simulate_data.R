@@ -1,5 +1,6 @@
 library(tidyverse)
 library(ggplot2)
+library(deSolve)
 ## devtools::install_github("jameshay218/lazymcmc")
 library(lazymcmc)
 source("simulation_functions.R")
@@ -9,13 +10,13 @@ source("model_funcs.R")
 population_n <- 6900000
 
 ## Sample size
-n <- 10000
+n <- 500000
 
 ## Epidemic growth rate
 growth_rate <- 0.1
 
 ## Duration of epidemic so far in days
-times <- 0:120
+times <- 0:365
 
 ## Viral kinetics pars
 ## Change wd to local path
@@ -28,7 +29,10 @@ pars <- list(viral_peak_mean=mean(chain$viral_peak_mean), viral_peak_sd=mean(cha
              tp_last_day=7)
 
 ## Simulate the epidemic process
-epidemic_process <- simulate_epidemic_process(population_n,0.1,times)
+#epidemic_process <- simulate_epidemic_process(population_n,0.1,times)
+#epidemic_process$plot
+seir_pars <- c("R0"=2.2,"gamma"=1/7,"sigma"=1/6.4,"I0"=100)
+epidemic_process <- simulate_seir_process(population_n,seir_pars,times)
 epidemic_process$plot
 
 ## Simulate infection times
@@ -42,7 +46,28 @@ infection_times <- simulate_infection_times(n, epidemic_process$overall_prob_inf
 onset_times <- simulate_symptom_onsets(infection_times)
 
 ## Simulate viral loads for the sample population
-viral_loads <- simulate_viral_loads(infection_times, onset_times, times, pars)
+simulated_data <- simulate_viral_loads(infection_times, onset_times, times, pars)
+
+viral_loads <- simulated_data$viral_loads
+viral_loads_tmp <- viral_loads[1:1000,]
+
+viral_loads_melted <- reshape2::melt(viral_loads_tmp)
+colnames(viral_loads_melted) <- c("i","t","viral_load")
+p <- ggplot(viral_loads_melted) + 
+  geom_tile(aes(x=t,y=i,fill=viral_load)) + 
+  scale_fill_viridis_c() +
+  theme_bw() +
+  ylab("Individual") + xlab("Time")
+pdf("viral_loads.pdf",height=5,width=6)
+p
+dev.off()
+
+viral_loads <- simulated_data$viral_loads
+viral_loads <- as_tibble(viral_loads)
+colnames(viral_loads) <- times
+write_csv(viral_loads,"seir_viral_loads.csv")
+
+#simulated_data$kinetics_pars[which(wow > 100),]
 
 ## Get viral loads of individuals that were infected
 tmp <- viral_loads[which(infection_times > 0),]
@@ -51,18 +76,4 @@ par(mfrow=c(1,1))
 hist(apply(tmp, 1, function(x) mean(x[x > 0])))
 ## If incidence is growing, we have a skewed distribution because more and more individuals are 
 ## early in their viral loads
-
-## Have a look to see the window of detection for each simulated individual
-viral_loads_bin <- apply(viral_loads, 1, function(x) x >= 2)
-#image(viral_loads_bin)
-
-par(mfrow=c(3,2))
-wow <- seq(60,120,by=10)
-hist(viral_loads[viral_loads[,wow[1]] > 0, wow[1]],xlim=c(0,10),breaks=10)
-hist(viral_loads[viral_loads[,wow[2]] > 0, wow[2]],xlim=c(0,10),breaks=10)
-hist(viral_loads[viral_loads[,wow[3]] > 0, wow[3]],xlim=c(0,10),breaks=10)
-hist(viral_loads[viral_loads[,wow[4]] > 0, wow[4]],xlim=c(0,10),breaks=10)
-hist(viral_loads[viral_loads[,wow[5]] > 0, wow[5]],xlim=c(0,10),breaks=10)
-hist(viral_loads[viral_loads[,wow[6]] > 0, wow[6]],xlim=c(0,10),breaks=10)
-par(mfrow=c(1,1))
 

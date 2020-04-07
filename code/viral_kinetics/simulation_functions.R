@@ -12,6 +12,64 @@ simulate_epidemic_process <- function(n_indivs, growth_rate, times){
   return(list(plot=p1, incidence=incidence, overall_prob_infection=p_infected))
 }
 
+seir_ode <- function(t,Y,par){
+  S<-Y[1]
+  E<-Y[2]
+  I<-Y[3]
+  R<-Y[4]
+  inc<-Y[5]
+  N <- sum(Y[1:4])
+  
+  beta<-par[1]
+  sigma<-par[2]
+  gamma<-par[3]
+  
+  dYdt<-vector(length=4)
+  dYdt[1]= -beta*I*S/N 
+  dYdt[2]= beta*I*S/N - sigma*E
+  dYdt[3]= sigma*E - gamma*I
+  dYdt[4]= gamma*I
+  dYdt[5] = beta*I*S/N
+  
+  return(list(dYdt))
+}
+
+simulate_seir_process <- function(n_indivs, pars, times){
+  # Set parameter values
+  R0 <- pars["R0"]
+  sigma<-pars["sigma"];
+  gamma<-pars["gamma"];
+  beta <- R0*gamma
+  N <- n_indivs
+  I0 <- pars["I0"]
+  
+  init <- c(N-I0,0,I0,0,0)
+  t<-times
+  par<-c(beta,sigma,gamma)
+  # Solve system using lsoda
+  sol<-lsoda(init,t,seir_ode,par)
+  # Plot solution
+  sol <- as.data.frame(sol)
+  colnames(sol) <- c("time","S","E","I","R","cumulative_incidence")
+  incidence <- diff(c(0,sol$cumulative_incidence/N))
+  prevalence <- (sol$E + sol$I)/N
+  sol <- reshape2::melt(sol, id.vars="time")
+  sol$value <- sol$value/N
+  
+  p <- ggplot(sol) + 
+    geom_line(aes(x=time,y=value,col=variable)) + 
+    ylab("Per capita") + 
+    xlab("Date") +
+    theme_bw()
+  p_inc <- ggplot(data.frame(x=t,y=incidence,y1=prevalence)) + geom_line(aes(x=x,y=y),col="red") +
+    geom_line(aes(x=x,y=y1),col="blue") +
+    ylab("Per capita incidence (red) and prevalence (blue)") + 
+    xlab("Date") +
+    theme_bw()
+  
+  return(list(plot=p, incidence_plot=p_inc, incidence=incidence, overall_prob_infection=sum(incidence)))  
+}
+
 simulate_infection_times <- function(n, p_infected, incidence){
   scaled_incidence <- incidence/sum(incidence)
   are_infected <- numeric(n)
@@ -55,20 +113,27 @@ simulate_viral_loads <- function(infection_times, onset_times, times, kinetics_p
   
   viral_loads <- matrix(0, nrow=length(infection_times), ncol=length(times))
   
+  n <- length(infection_times)
+  
+  viral_peaks <- pmax(rnorm(n, viral_peak_mean, viral_peak_sd),0.01)
+  tps <- runif(n,0,tp_last_day)
+  wanes <- pmax(rnorm(n, wane_mean, wane_sd),0.001)
+  
   for(i in seq_along(infection_times)){
     if(i %% 1000 == 0) print(i)
     if(infection_times[i] > 0){
-      viral_peak <- max(rnorm(1, viral_peak_mean, viral_peak_sd),0.01)
-      tp <- runif(1,0,tp_last_day)
-      wane <- max(rnorm(1, wane_mean, wane_sd),0.001)
+      viral_peak <- viral_peaks[i]
+      tp <- tps[i]
+      wane <- wanes[i]
+      
       incubation_period <- onset_times[i] - infection_times[i]
       
-      viral_load <- model_func(times, tp+incubation_period, viral_peak, wane)
+      viral_load <- model_func_tinf(times, infection_times[i], tp+incubation_period, viral_peak, wane)
       viral_load[viral_load < 0] <- 0
-      
-      viral_loads[i,infection_times[i]:ncol(viral_loads)] <- viral_load[seq_along(infection_times[i]:ncol(viral_loads))]
+      viral_loads[i,] <- viral_load
+      #viral_loads[i,infection_times[i]:ncol(viral_loads)] <- viral_load[seq_along(infection_times[i]:ncol(viral_loads))]
     }
   }
-  return(viral_loads)
+  return(list(viral_loads=viral_loads,kinetics_pars=data.frame(peaks=viral_peaks,tp=tps,wane=wanes)))
 }
 
