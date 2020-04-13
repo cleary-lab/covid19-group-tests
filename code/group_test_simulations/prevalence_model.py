@@ -35,11 +35,12 @@ def cond_prob(p,m,k,td,conditional_k):
 def run_em(y,b,n,p0,Kernels,max_itr=100,min_itr=10,tol=1e-3,n_vals=50):
 	# calculate all the conditional densities for the observed values (y) up front
 	CK = []
+	ck0 = [1]+[np.exp(Kernels[k].score_samples([[-1]])[0]) for k in range(n)] # conditional density of 0.1
 	for i in range(b):
 		if y[i] > 0:
 			conditional_k = [0]+[np.exp(Kernels[k].score_samples([[np.log10(y[i]*n)]])[0]) for k in range(n)] # conditional density of y*m, given k
 		else:
-			conditional_k = [1]+[np.exp(Kernels[k].score_samples([[-1]])[0]) for k in range(n)] # conditional density of 0.1
+			conditional_k = ck0
 		CK.append(conditional_k)
 	for itr in range(max_itr):
 		p = 0
@@ -74,6 +75,8 @@ if __name__ == '__main__':
 	parser.add_argument('--savepath', help='Path to save summary figure and results')
 	parser.add_argument('--p0', help='Initial frequency estimate',type=float,default=0.005)
 	parser.add_argument('--num-trials', help='Number of random sample trials at each time point',type=int,default=100)
+	parser.add_argument('--make-plot',dest='make_plot', action='store_true')
+	parser.set_defaults(make_plot=False)
 	args,_ = parser.parse_known_args()
 	for key,value in vars(args).items():
 		print('%s\t%s' % (key,str(value)))
@@ -113,21 +116,22 @@ if __name__ == '__main__':
 		true_frequencies.append(true_freq)
 		print('Time point: %d; Population frequency: %.5f; Sampled frequency: %.5f; Estimated frequency: %.5f' % (ti, true_freq, np.average(p[:,0]), np.average(p[:,1])))
 	Results = np.array(Results) + 1e-5 # we'll say the baseline estimated frequency is 1/100,000
-	np.save('%s/results.b-%d_n-%d_t0-%d_t1-%d.pdf' % (args.savepath,args.num_batches,args.batch_size,args.start_time,args.end_time),Results)
-	np.save('%s/true_frequencies.b-%d_n-%d_t0-%d_t1-%d.pdf' % (args.savepath,args.num_batches,args.batch_size,args.start_time,args.end_time),true_frequencies)
-	mode = np.empty(Results.shape,dtype='<U36')
-	mode[:,:,0] = 'sampled population; N=%d,b=%d,n=%d' % (N,args.num_batches,args.batch_size)
-	mode[:,:,1] = 'estimated from b=%d measurements' % args.num_batches
-	F = (np.ones(Results.shape).T*np.array(true_frequencies)).T
-	df = {'true frequency of positive samples': F.flatten(), 'estimated frequency of positive samples': Results.flatten(), 'mode': mode.flatten()}
-	df = pd.DataFrame(df)
-	ax = sns.lineplot(data=df, x='true frequency of positive samples', y='estimated frequency of positive samples', hue='mode', ci='sd')
-	ax.set_xscale('log')
-	ax.set_yscale('log')
-	handles, labels = ax.get_legend_handles_labels()
-	_= ax.legend(handles=handles[1:], labels=labels[1:]) # remove legend title
-	_=plt.title('True vs Estimated prevalence, analyzed from days %d-%d' % (args.start_time,args.end_time))
-	_=plt.tight_layout()
-	plt.savefig('%s/estimated_prevalence.b-%d_n-%d_t0-%d_t1-%d.pdf' % (args.savepath,args.num_batches,args.batch_size,args.start_time,args.end_time))
-	plt.close()
+	np.save('%s/results.b-%d_n-%d_t0-%d_t1-%d.npy' % (args.savepath,args.num_batches,args.batch_size,args.start_time,args.end_time),Results)
+	np.save('%s/true_frequencies.b-%d_n-%d_t0-%d_t1-%d.npy' % (args.savepath,args.num_batches,args.batch_size,args.start_time,args.end_time),true_frequencies)
+	if args.make_plot:
+		mode = np.empty(Results.shape,dtype='<U42')
+		mode[:,:,0] = 'sampled population; N=%d,b=%d,n=%d' % (N,args.num_batches,args.batch_size)
+		mode[:,:,1] = 'estimated from b=%d measurements' % args.num_batches
+		F = (np.ones(Results.shape).T*np.array(true_frequencies)).T
+		df = {'true frequency of positive samples': F.flatten(), 'estimated frequency of positive samples': Results.flatten(), 'mode': mode.flatten()}
+		df = pd.DataFrame(df)
+		ax = sns.lineplot(data=df, x='true frequency of positive samples', y='estimated frequency of positive samples', hue='mode', ci='sd')
+		ax.set_xscale('log')
+		ax.set_yscale('log')
+		handles, labels = ax.get_legend_handles_labels()
+		_= ax.legend(handles=handles[1:], labels=labels[1:]) # remove legend title
+		_=plt.title('True vs Estimated prevalence, analyzed from days %d-%d' % (args.start_time,args.end_time))
+		_=plt.tight_layout()
+		plt.savefig('%s/estimated_prevalence.b-%d_n-%d_t0-%d_t1-%d.pdf' % (args.savepath,args.num_batches,args.batch_size,args.start_time,args.end_time))
+		plt.close()
 
