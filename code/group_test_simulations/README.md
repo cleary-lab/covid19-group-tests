@@ -17,17 +17,14 @@ We run prevalence estimation as follows:
 
 The expected output is:
 
-`batch_size      384
-
+```python
+batch_size      384
 num_batches     24
-
 observations    ../../examples/observations.viral_load.example_1.txt
-
 kde_path        ../../examples/KDEs/seir_kde
-
 p0      0.005
-
-Estimated prevalence: 0.0111%`
+Estimated prevalence: 0.0111%
+```
 
 (Note: p0 is the initial estimate of the EM algorithm. In this case, 0.5%)
 
@@ -40,16 +37,13 @@ Run prevalence estimation:
 
 The expected output is:
 
-`batch_size      96
-
+```python
+batch_size      96
 num_batches     24
-
 observations    ../../examples/observations.viral_load.example_2.txt
-
 kde_path        ../../examples/KDEs/seir_kde
-
 p0      0.005
-
-Estimated prevalence: 0.1406%`
+Estimated prevalence: 0.1406%
+```
 
 
