@@ -13,13 +13,13 @@ In this example we'll suppose we collected **N=9,216** samples and split them in
 
 We run prevalence estimation as follows:
 
-```python
+```bash
 python estimate_prevalence.py --batch-size 384 --num-batches 24 --observations ../../examples/observations.viral_load.example_1.txt --kde-path ../../examples/KDEs/seir_kde
 ```
 
 The expected output is:
 
-```python
+```bash
 batch_size      384
 num_batches     24
 observations    ../../examples/observations.viral_load.example_1.txt
@@ -35,13 +35,13 @@ Now let's suppose we collected **N=2,304** samples and split them into **b=24** 
 
 Run prevalence estimation:
 
-```python
+```bash
 python estimate_prevalence.py --batch-size 96 --num-batches 24 --observations ../../examples/observations.viral_load.example_2.txt --kde-path ../../examples/KDEs/seir_kde
 ```
 
 The expected output is:
 
-```python
+```bash
 batch_size      96
 num_batches     24
 observations    ../../examples/observations.viral_load.example_2.txt
@@ -58,13 +58,13 @@ Here we'll use the [pools](../../examples/pool_composition.example_3.txt) and [r
 
 Run the code for sample identification as follows:
 
-```python
+```bash
 python identify_positive_samples.py --observations ../../examples/observations.positive_negative.example_3.txt --pools ../../examples/pool_composition.example_3.txt
 ```
 
 The expected output is:
 
-```python
+```bash
 observations    ../../examples/observations.positive_negative.example_3.txt
 pools   ../../examples/pool_composition.example_3.txt
 
