@@ -85,6 +85,6 @@ if __name__ == '__main__':
 	_=plt.grid(b=None)
 	_=plt.title('Effectiveness of optimal design from days %d-%d' % (args.start_time,args.end_time))
 	_=plt.tight_layout()
-	_=plt.savefig('%s/summary.resource.png' % args.resultspath)
+	_=plt.savefig('%s/summary.resource.pdf' % args.resultspath)
 	plt.close()
 		
