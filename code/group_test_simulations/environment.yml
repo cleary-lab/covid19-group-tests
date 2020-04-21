@@ -1,0 +1,11 @@
+name: covid-group-tests
+channels:
+  - anaconda
+  - conda-forge
+dependencies:
+  - python=3.7
+  - scikit-learn
+  - joblib
+  - seaborn
+  - pandas
+  - python-spams
