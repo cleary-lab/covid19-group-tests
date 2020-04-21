@@ -13,7 +13,9 @@ In this example we'll suppose we collected **N=9,216** samples and split them in
 
 We run prevalence estimation as follows:
 
-`python estimate_prevalence.py --batch-size 384 --num-batches 24 --observations ../../examples/observations.viral_load.example_1.txt --kde-path ../../examples/KDEs/seir_kde`
+```python
+python estimate_prevalence.py --batch-size 384 --num-batches 24 --observations ../../examples/observations.viral_load.example_1.txt --kde-path ../../examples/KDEs/seir_kde
+```
 
 The expected output is:
 
@@ -33,7 +35,9 @@ Now let's suppose we collected **N=2,304** samples and split them into **b=24** 
 
 Run prevalence estimation:
 
-`python estimate_prevalence.py --batch-size 96 --num-batches 24 --observations ../../examples/observations.viral_load.example_2.txt --kde-path ../../examples/KDEs/seir_kde`
+```python
+python estimate_prevalence.py --batch-size 96 --num-batches 24 --observations ../../examples/observations.viral_load.example_2.txt --kde-path ../../examples/KDEs/seir_kde
+```
 
 The expected output is:
 
@@ -46,4 +50,28 @@ p0      0.005
 Estimated prevalence: 0.1406%
 ```
 
+## Individual case identification
+Our case identification algorithm takes as input the positive or negative result of each pooled test, along with the composition of each pool. The output is a list of putatively positive samples to be validated in a second stage of testing.
+
+### Identification Example 1
+Here we'll use the [pools](../../examples/pool_composition.example_3.txt) and [results](../../examples/observations.positive_negative.example_3.txt) of real tests we performed on de-identified samples. This experiment consisted of 48 samples -- the first 47 samples were negative and the **48th sample was positive**. Each sample was split into 3 out of 6 total pools.
+
+Run the code for sample identification as follows:
+
+```python
+python identify_positive_samples.py --observations ../../examples/observations.positive_negative.example_3.txt --pools ../../examples/pool_composition.example_3.txt
+```
+
+The expected output is:
+
+```python
+observations    ../../examples/observations.positive_negative.example_3.txt
+pools   ../../examples/pool_composition.example_3.txt
+
+Found 2 putative positives:
+sample 32
+sample 48
+```
+
+Each of these samples was included in all 3 positive pools (1, 2, and 4).
 
