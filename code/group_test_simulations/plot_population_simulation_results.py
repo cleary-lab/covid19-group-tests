@@ -29,6 +29,7 @@ if __name__ == '__main__':
 	parser.add_argument('--resultspath', help='Path to save summary figure')
 	parser.add_argument('--n-individuals', help='Number of individuals to test (n)',type=int)
 	parser.add_argument('--m-pools', help='Number of pools (m)',type=int)
+	parser.add_argument('--q-split', help='Number of pools (q) into which each sample is split',type=int)
 	args,_ = parser.parse_known_args()
 	f = open(args.viral_load_matrix)
 	ViralLoad = [[float(l) for l in line.strip().split()] for line in f]
@@ -43,7 +44,7 @@ if __name__ == '__main__':
 	OnsetTime = [float(line.strip()) for line in f]
 	f.close()
 	OnsetTime = np.array(OnsetTime)
-	cond = 'n-%d_m-%d' % (args.n_individuals,args.m_pools)
+	cond = 'n-%d_m-%d_q-%d' % (args.n_individuals,args.m_pools,args.q_split)
 	recall = np.load('%s/Recall_combined.%s.npy' % (args.resultspath,cond))
 	efficiency = np.load('%s/Eff_avg.%s.npy' % (args.resultspath,cond))
 	recall_n = np.load('%s/Recall_n.%s.npy' % (args.resultspath,cond),allow_pickle=True)[:-10] # exclude last 10d when infected rate > 1%
@@ -79,7 +80,7 @@ if __name__ == '__main__':
 	_=plt.xlabel('Time',fontsize=10)
 	_=plt.ylabel('Total recall (efficiency*sensitivity)',fontsize=9)
 	_=plt.tight_layout()
-	plt.savefig('%s/summary.%s.png' % (args.resultspath,cond))
+	plt.savefig('%s/summary.%s.pdf' % (args.resultspath,cond))
 	plt.close()
 
 
