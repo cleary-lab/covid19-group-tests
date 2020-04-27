@@ -1,78 +1,44 @@
 import numpy as np
 import argparse
 import pandas as pd
-from scipy.special import comb
 from scipy.stats import poisson
-from sklearn.neighbors import KernelDensity
+import joblib
+from estimate_prevalence import run_em
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 mpl.style.use('ggplot')
 import seaborn as sns
 
-def empirical_convolutions(ViralLoad,K,b=0.1,samples=10000,thresh=0):
-	Kernels = []
-	nz = np.where(ViralLoad.flatten() > thresh)[0]
-	x = ViralLoad.flatten()[nz]
-	x = 10**x
-	for k in range(1,K+1):
-		z = [np.random.choice(x,k).sum() for _ in range(samples)]
-		z = np.log10(z)
-		kernel = KernelDensity(bandwidth=b).fit(z[:,np.newaxis])
-		Kernels.append(kernel)
-	return Kernels
-
-def total_density(m,p,conditional_k):
-	x = 0
-	for k in range(m+1):
-		x += comb(m,k)*p**k*(1-p)**(m-k)*conditional_k[k]
-	return x
-
-def cond_prob(p,m,k,td,conditional_k):
-	cp = comb(m,k)*p**k*(1-p)**(m-k)*conditional_k[k]/td
-	return cp
-
-def run_em(y,b,n,p0,Kernels,max_itr=100,min_itr=10,tol=1e-3,n_vals=50):
-	# calculate all the conditional densities for the observed values (y) up front
-	CK = []
-	ck0 = [1]+[np.exp(Kernels[k].score_samples([[-1]])[0]) for k in range(n)] # conditional density of 0.1
-	for i in range(b):
-		if y[i] > 0:
-			conditional_k = [0]+[np.exp(Kernels[k].score_samples([[np.log10(y[i]*n)]])[0]) for k in range(n)] # conditional density of y*m, given k
-		else:
-			conditional_k = ck0
-		CK.append(conditional_k)
-	for itr in range(max_itr):
-		p = 0
-		for i in range(b):
-			conditional_k = CK[i]
-			td = total_density(n,p0,conditional_k)
-			for k in range(1,n+1):
-				p += k*cond_prob(p0,n,k,td,conditional_k)
-		p = p/(n*b)
-		if (itr > min_itr) and (abs(p-p0)/p0 < tol):
-			break
-		p0 = p
-	return p
-
-def sample_pooled_viral_load(viral_load,batch_size,LOD=1):
+def sample_pooled_ct_values(viral_load,batch_size,y_cept,Ct_thresh=40,LOD=1,fp_rate=0.01):
 	idx = np.random.choice(viral_load.shape[0],batch_size,replace=False)
 	vl = 10**viral_load[idx] - 1
 	sampled_load = poisson.rvs(vl/batch_size)
 	total_sampled_load = sampled_load.sum()
-	if total_sampled_load < LOD:
-		total_sampled_load = 0
+	if np.random.random() < fp_rate:
+		# 1% of the time (or whatever fp_rate is) add the viral load from 1 positive sample selected at random with load sufficient to cause a false positive
+		nz = np.where(viral_load > np.log10(LOD*batch_size))[0]
+		i = np.random.choice(nz,1)
+		total_sampled_load += poisson.rvs((10**viral_load[i]-1)/batch_size)
+	ct_value = y_cept - np.log2(10)*np.log10(total_sampled_load+1e-8)
+	if ct_value > Ct_thresh:
+		ct_value = -1 # undetected
 	sampled_freq = np.average(vl > LOD)
-	return sampled_freq,total_sampled_load
+	return sampled_freq,ct_value
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--viral-load-matrix', help='Path to viral load matrix (individuals x time points)')
+	parser.add_argument('--kde-path', help='Path to KDEs fit for each value of k, including prefix (ie, seir_kde)')
 	parser.add_argument('--batch-size', help='Number of samples in each batch',type=int)
 	parser.add_argument('--num-batches', help='Number of batches',type=int)
 	parser.add_argument('--start-time', help='Start of time range to analyze',type=int)
 	parser.add_argument('--end-time', help='End of time range to analyze',type=int)
 	parser.add_argument('--savepath', help='Path to save summary figure and results')
+	parser.add_argument('--ct-intercept-mean', help='Mean of Ct y-intercept distribution',type=float,default=38.5)
+	parser.add_argument('--ct-intercept-std', help='Stdev of Ct y-intercept distribution',type=float,default=1)
+	parser.add_argument('--fp-rate', help='Rate of false positive PCRs',type=float,default=0.01)
+	parser.add_argument('--fp-rate-estimate', help='Estimated false positive PCR rate',type=float,default=0.002)
 	parser.add_argument('--p0', help='Initial frequency estimate',type=float,default=0.005)
 	parser.add_argument('--num-trials', help='Number of random sample trials at each time point',type=int,default=100)
 	parser.add_argument('--make-plot',dest='make_plot', action='store_true')
@@ -81,18 +47,8 @@ if __name__ == '__main__':
 	for key,value in vars(args).items():
 		print('%s\t%s' % (key,str(value)))
 	N = args.batch_size*args.num_batches
-	f = open(args.viral_load_matrix)
-	timepoints = f.readline()
-	ViralLoad = [[float(l) for l in line.strip().split(',')] for line in f]
-	f.close()
-	ViralLoad = np.array(ViralLoad)
-	print('matrix size: %d x %d' % (ViralLoad.shape[0],ViralLoad.shape[1]))
-	# use 20% of the data for learning empirical distributions
-	train_idx = np.random.choice(ViralLoad.shape[0],int(ViralLoad.shape[0]/5),replace=False)
-	test_idx = np.setdiff1d(np.arange(ViralLoad.shape[0]),train_idx)
-	ViralLoad_train = ViralLoad[train_idx]
-	ViralLoad_test = ViralLoad[test_idx]
-	Kernels = empirical_convolutions(ViralLoad_train,args.batch_size)
+	ViralLoad_test = np.load(args.viral_load_matrix)
+	Kernels = [joblib.load('%s.k-%d.pkl' % (args.kde_path,k)) for k in range(1,args.batch_size+1)]
 	Results = []
 	true_frequencies = []
 	for ti in range(args.start_time,args.end_time):
@@ -100,13 +56,14 @@ if __name__ == '__main__':
 		for _ in range(args.num_trials):
 			p_obs = []
 			Y = []
+			y_cept = np.random.randn()*args.ct_intercept_std + args.ct_intercept_mean
 			for b in range(args.num_batches):
-				freq,y = sample_pooled_viral_load(ViralLoad_test[:,ti],args.batch_size)
+				freq,y = sample_pooled_ct_values(ViralLoad_test[:,ti],args.batch_size,y_cept,fp_rate=args.fp_rate)
 				p_obs.append(freq)
 				Y.append(y)
 			p_obs = np.average(p_obs)
 			if max(Y) > 0:
-				p_est = run_em(Y,args.num_batches,args.batch_size,args.p0,Kernels)
+				p_est = run_em(Y,args.num_batches,args.batch_size,args.p0,Kernels,args.fp_rate_estimate)
 			else:
 				p_est = 0
 			p.append([p_obs,p_est])
