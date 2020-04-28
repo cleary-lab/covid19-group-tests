@@ -32,7 +32,8 @@ if __name__ == '__main__':
 	parser.add_argument('--min-resources', help='Minimum number of resources to consider',type=int,default=12)
 	args,_ = parser.parse_known_args()
 	f = open(args.viral_load_matrix)
-	ViralLoad = [[float(l) for l in line.strip().split()] for line in f]
+	timepoints = f.readline()
+	ViralLoad = [[float(l) for l in line.strip().split(',')] for line in f]
 	f.close()
 	ViralLoad = 10**np.array(ViralLoad) - 1
 	e0 = np.average([np.average(v[v>0] > args.LOD) for v in ViralLoad[:,args.start_time:args.end_time].T if v.sum()!=0])

@@ -32,15 +32,18 @@ if __name__ == '__main__':
 	parser.add_argument('--q-split', help='Number of pools (q) into which each sample is split',type=int)
 	args,_ = parser.parse_known_args()
 	f = open(args.viral_load_matrix)
-	ViralLoad = [[float(l) for l in line.strip().split()] for line in f]
+	timepoints = f.readline()
+	ViralLoad = [[float(l) for l in line.strip().split(',')] for line in f]
 	f.close()
 	ViralLoad = np.array(ViralLoad)
 	x = [np.average(v[v > 0] > 2) for v in ViralLoad.T]
 	f = open(args.infection_time)
+	header = f.readline()
 	InfectionTime = [float(line.strip()) for line in f]
 	f.close()
 	InfectionTime = np.array(InfectionTime)
 	f = open(args.onset_time)
+	header = f.readline()
 	OnsetTime = [float(line.strip()) for line in f]
 	f.close()
 	OnsetTime = np.array(OnsetTime)
