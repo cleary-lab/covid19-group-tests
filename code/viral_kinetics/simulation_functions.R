@@ -42,8 +42,9 @@ simulate_seir_process <- function(n_indivs, pars, times){
   beta <- R0*gamma
   N <- n_indivs
   I0 <- pars["I0"]
+  R0 <- pars["R0"]
   
-  init <- c(N-I0,0,I0,0,0)
+  init <- c(N-I0-R0,0,I0,0,R0)
   t<-times
   par<-c(beta,sigma,gamma)
   # Solve system using lsoda
@@ -67,7 +68,9 @@ simulate_seir_process <- function(n_indivs, pars, times){
     xlab("Date") +
     theme_bw()
   
-  return(list(plot=p, incidence_plot=p_inc, incidence=incidence, overall_prob_infection=sum(incidence)))  
+  return(list(plot=p, incidence_plot=p_inc, incidence=incidence, 
+              seir_outputs=sol,prevalence=prevalence,
+              overall_prob_infection=sum(incidence)))  
 }
 
 simulate_infection_times <- function(n, p_infected, incidence){
@@ -87,7 +90,7 @@ simulate_infection_times <- function(n, p_infected, incidence){
   return(infection_times)
 }
 
-simulate_symptom_onsets <- function(infection_times, incubation_period_par1=1.57, incubation_period_par2=0.65){
+simulate_symptom_onsets <- function(infection_times, incubation_period_par1=1.62, incubation_period_par2=0.418){
   onset_times <- numeric(length(infection_times))
   
   for(i in seq_along(onset_times)){
@@ -129,6 +132,9 @@ simulate_viral_loads <- function(infection_times, onset_times, times, kinetics_p
       incubation_period <- onset_times[i] - infection_times[i]
       
       viral_load <- model_func_tinf(times, infection_times[i], tp+incubation_period, viral_peak, wane)
+      #if(infection_times[i] + 60 < length(viral_load)){
+      #  viral_load[(infection_times[i] + 60):length(viral_load)] <- 0
+      #}
       viral_load[viral_load < 0] <- 0
       viral_loads[i,] <- viral_load
       #viral_loads[i,infection_times[i]:ncol(viral_loads)] <- viral_load[seq_along(infection_times[i]:ncol(viral_loads))]

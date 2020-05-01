@@ -10,7 +10,7 @@ model_func <- function(ts, tp, viral_peak, wane){
 model_func_tinf <- function(ts, tinf, tp, viral_peak, wane){
   y <- numeric(length(ts))
   growth <- viral_peak/tp
-  y[ts < tinf] <- 0
+  y[ts <= tinf] <- 0
   y[ts <= tp + tinf & ts > tinf] <- growth*(ts[ts <= tp + tinf & ts > tinf]-tinf)
   y[ts > tp + tinf] <- viral_peak + wane*tp - wane*(ts[ts > tp + tinf] - tinf)
   y
@@ -41,7 +41,9 @@ gamma_pars_from_mean_sd <- function(gamma_mean, gamma_var){
 
 
 ## Create the posterior function for model fitting
-create_func_indivs <- function(parTab, dat, PRIOR_FUNC=NULL,ver="model", remove_pre_tp=FALSE){
+create_func_indivs <- function(parTab, dat, PRIOR_FUNC=NULL,ver="model", 
+                               remove_pre_tp=FALSE, draw_incubation_period=FALSE,
+                               incu_par1=1.57,incu_par2=0.65){
   
   ## We'll be creating a vector of predictions that is the same length
   ## as the vector of observations
@@ -69,16 +71,31 @@ create_func_indivs <- function(parTab, dat, PRIOR_FUNC=NULL,ver="model", remove_
     for(i in indiv_ids_unique){
       ts_subset <- dat[dat$i == i, "t"]
       
+      tinf <- 0
+      incu_period <- 0
+      if(draw_incubation_period){
+        incu_period <- rlnorm(1, incu_par1, incu_par2)
+        tinf <- 21 - incu_period
+        tinf <- max(0, tinf)
+      }
+      
       subset_pars <- pars[which(indiv_ids  == i)]
       viral_peak <- subset_pars["viral_peak"]
-      tp <- subset_pars["tp"]
+      tp <- subset_pars["tp"] + incu_period
       wane <- subset_pars["wane"]
     
+    
+      y <- numeric(length(ts_subset))
       growth <- viral_peak/tp
-      pre_peak <- growth*ts_subset[ts_subset <= tp]
-      post_peak <- viral_peak + wane*tp - wane*(ts_subset[ts_subset > tp])
+      y[ts_subset < tinf] <- 0
+      y[ts_subset <= tp + tinf & ts_subset > tinf] <- growth*(ts_subset[ts_subset <= tp + tinf & ts_subset > tinf]-tinf)
+      y[ts_subset > tp + tinf] <- viral_peak + wane*tp - wane*(ts_subset[ts_subset > tp + tinf] - tinf)
+
+      #growth <- viral_peak/tp
+      #pre_peak <- growth*ts_subset[ts_subset <= tp]
+      #post_peak <- viral_peak + wane*tp - wane*(ts_subset[ts_subset > tp])
       
-      y <- c(pre_peak, post_peak)
+      #y <- c(pre_peak, post_peak)
       
       ## Do we want to include the pre-peak predictions in the likelihood?
       if(remove_pre_tp){
