@@ -30,7 +30,7 @@ pars <- list(viral_peak_mean=mean(chain$viral_peak_mean), viral_peak_sd=mean(cha
 ## Simulate the epidemic process
 #epidemic_process <- simulate_epidemic_process(population_n,0.1,times)
 #epidemic_process$plot
-seir_pars <- c("R0"=2.2,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"R0"=69000000*0.1)
+seir_pars <- c("R0"=2.2,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
 epidemic_process <- simulate_seir_process(population_n,seir_pars,times)
 epidemic_process$plot
 

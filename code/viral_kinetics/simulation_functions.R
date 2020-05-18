@@ -42,9 +42,9 @@ simulate_seir_process <- function(n_indivs, pars, times){
   beta <- R0*gamma
   N <- n_indivs
   I0 <- pars["I0"]
-  R0 <- pars["R0"]
+  recovered0 <- pars["recovered0"]
   
-  init <- c(N-I0-R0,0,I0,0,R0)
+  init <- c(N-I0-recovered0,0,I0,0,recovered0)
   t<-times
   par<-c(beta,sigma,gamma)
   # Solve system using lsoda
