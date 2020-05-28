@@ -3,6 +3,33 @@ from scipy.stats import poisson
 import glob,os
 import argparse
 
+def grid_balanced(nlist):
+	m = sum(nlist)
+	n = np.product(nlist)
+	q = len(nlist)
+	A = np.zeros((m,n))
+	i = 0
+	for j1 in range(q):
+		B = np.ones((1,1))
+		for j2 in reversed(range(q)):
+			B = np.kron(B,np.identity(nlist[j2]) if j2 == j1 else np.ones((1,nlist[j2])))
+		A[i:i+nlist[j1],:] = B
+		i += nlist[j1]
+	return A
+
+def partition(m,n):
+	assert n/m == int(n/m)
+	s = int(n/m)
+	return np.kron(np.identity(m), np.ones((1,int(n/m))))
+
+# based on R code written by Edgar
+# todo - implement `read=False` case
+def steiner_system(n):
+	A_full = np.loadtxt("steiner_system_4_7_23.txt",skiprows=1,usecols=range(1,254))
+	# select random subset
+	s = np.random.choice(253,n,replace=False)
+	return A_full[:,s]
+
 def random_binary_balanced(m,n,q):
 	A = np.zeros((m,n))
 	for i in range(n):
