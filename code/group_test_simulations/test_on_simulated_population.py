@@ -130,10 +130,17 @@ if __name__ == '__main__':
 	if args.pool_compositions is not None:
 		print('loading pools from: %s' % args.pool_compositions)
 		A = np.load(args.pool_compositions)
+		m_pools = A.shape[0]
+		n_individuals = A.shape[1]
+		q_split = A.sum(axis=0)[0]
+		assert np.all(A.sum(axis=0) == q_split)
 	else:
-		A = random_binary_balanced(args.m_pools,args.n_individuals,args.q_split)
+		m_pools = args.m_pools
+		n_individuals = args.n_individuals
+		q_split = args.q_split
+		A = random_binary_balanced(m_pools,n_individuals,q_split)
 	# number of faulty tests to tolerate
-	e = np.round(2*(1-args.expected_pos_prob)*args.q_split) + 1e-7
+	e = np.round(2*(1-args.expected_pos_prob)*q_split) + 1e-7
 	for key,value in vars(args).items():
 		print('%s\t%s' % (key,str(value)))
 	print('error_tol\t%d' % e)
@@ -146,10 +153,10 @@ if __name__ == '__main__':
 		E_avg[t] = ea
 		Recall_combined[t] = rec
 		print('Time: %d; Case frequency: %.5f; Efficiency: %.2f; Sensitivity: %.4f; Fraction >LOD: %.4f' % (t,np.average(ViralLoad[:,t] > 0),ea,rec, np.average(ViralLoad[ViralLoad[:,t] > 0,t] > args.LOD)))
-	np.save('%s/Eff_avg.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),E_avg)
-	np.save('%s/Recall_combined.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),Recall_combined)
-	np.save('%s/Recall_n.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),Recall_n)
-	np.save('%s/Vl.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),Vl)
-	np.save('%s/Vi.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),Vi)
-	np.save('%s/Vo.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),Vo)
+	np.save('%s/Eff_avg.n-%d_m-%d_q-%d.npy' % (args.savepath,n_individuals,m_pools,q_split),E_avg)
+	np.save('%s/Recall_combined.n-%d_m-%d_q-%d.npy' % (args.savepath,n_individuals,m_pools,q_split),Recall_combined)
+	np.save('%s/Recall_n.n-%d_m-%d_q-%d.npy' % (args.savepath,n_individuals,m_pools,q_split),Recall_n)
+	np.save('%s/Vl.n-%d_m-%d_q-%d.npy' % (args.savepath,n_individuals,m_pools,q_split),Vl)
+	np.save('%s/Vi.n-%d_m-%d_q-%d.npy' % (args.savepath,n_individuals,m_pools,q_split),Vi)
+	np.save('%s/Vo.n-%d_m-%d_q-%d.npy' % (args.savepath,n_individuals,m_pools,q_split),Vo)
 
