@@ -107,6 +107,7 @@ if __name__ == '__main__':
 	parser.add_argument('--LOD', help='Limit of detection',type=float,default=100)
 	parser.add_argument('--pool-compositions', help='Path to matrix of pool compositions, otherwise random (default)',default=None)
 	parser.add_argument('--expected-pos-prob', help='1-expected faulty test rate (for setting error correction threshold)',type=float,default=0.95)
+	parser.add_argument('--grid-balanced', help='List of grid dimensions, otherwise random (default)',default=None)
 	args,_ = parser.parse_known_args()
 	f = open(args.viral_load_matrix)
 	timepoints = f.readline()
@@ -134,6 +135,13 @@ if __name__ == '__main__':
 		n_individuals = A.shape[1]
 		q_split = A.sum(axis=0)[0]
 		assert np.all(A.sum(axis=0) == q_split)
+	elif args.grid_balanced is not None:
+		print('using balanced grid design: %s' % args.grid_balanced)
+		nlist = [int(n) for n in args.grid_balanced.strip().split(',')]
+		A = grid_balanced(nlist)
+		m_pools = sum(nlist)
+		n_individuals = np.product(nlist)
+		q_split = len(nlist)
 	else:
 		m_pools = args.m_pools
 		n_individuals = args.n_individuals
