@@ -108,6 +108,7 @@ if __name__ == '__main__':
 	parser.add_argument('--pool-compositions', help='Path to matrix of pool compositions, otherwise random (default)',default=None)
 	parser.add_argument('--expected-pos-prob', help='1-expected faulty test rate (for setting error correction threshold)',type=float,default=0.95)
 	parser.add_argument('--grid-balanced', help='List of grid dimensions, otherwise random (default)',default=None)
+	parser.add_argument('--steiner', help='Number of individuals to test, otherwise random (default)',default=None)
 	args,_ = parser.parse_known_args()
 	f = open(args.viral_load_matrix)
 	timepoints = f.readline()
@@ -142,6 +143,13 @@ if __name__ == '__main__':
 		m_pools = sum(nlist)
 		n_individuals = np.product(nlist)
 		q_split = len(nlist)
+	elif args.steiner is not None:
+		print('using steiner design: %s' % args.steiner)
+		n_individuals = int(args.steiner)
+		A = steiner_system(n_individuals)
+		m_pools = A.shape[0]
+		q_split = A.sum(axis=0)[0]
+		assert np.all(A.sum(axis=0) == q_split)
 	else:
 		m_pools = args.m_pools
 		n_individuals = args.n_individuals
