@@ -1,0 +1,16 @@
+values,names,indiv,fixed,lower_bound,upper_bound,steps
+1,sd,0,0,0,10,0.1
+40,lod,0,1,0,100,0.1
+0,max_titre,0,1,-10,100,0.1
+-10,viral_peak_mean,0,0,-40,0,0.1
+1,viral_peak_sd,0,0,0,10,0.1
+-4,wane_mean,0,0,-40,0,0.1
+0.2,wane_sd,0,0,0,10,0.1
+0,tp_mean,0,0,-10,10,0.1
+0.2,tp_sd,0,0,0,5,0.1
+0.3,rho_viral_wane,0,0,-1,1,0.1
+0.05,rho_viral_tp,0,0,-1,1,0.1
+0,rho_wane_tp,0,0,-1,1,0.1
+-10,viral_peak,1,0,-40,0,0.1
+4,tp,1,0,-10,10,0.1
+-4,wane,1,0,-40,0,0.1

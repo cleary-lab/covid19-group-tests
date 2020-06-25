@@ -1,0 +1,512 @@
+log_link <- function(sex, age, beta_t, beta_a, beta_s){
+p <- 1/(1 + exp(-(beta_t + beta_a*age + beta_s * sex)))
+p
+}
+log_link <- function(beta_t, sex=0, age=0, beta_a=0, beta_s=0){
+p <- 1/(1 + exp(-(beta_t + beta_a*age + beta_s * sex)))
+p
+}
+log_link(1)
+log_link(2)
+log_link(1000)
+log_link(0:100)
+log_link(-100:100)
+plot(log_link(-100:100))
+log_link <- function(beta_t, sex=0, age=0, beta_a=0, beta_s=0){
+p <- 1/(1 + exp(-(beta_t + beta_a*age + beta_s * sex)))
+p
+}
+lik_z_recent <- function(z_r, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0) {
+beta_use <- beta_ts[(t_samp - t_window):t_samp]
+lik <- 1 - prob(log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(z_r * lik + (1-z_r) * (1-lik))
+}
+beta_ts <- runif(100,-10,10)
+t_samp <- 50
+beta_ts <- runif(100,-10,10)
+plot(log_link(beta_ts))
+beta_ts <- runif(100,-2,2)
+plot(log_link(beta_ts))
+beta_ts <- runif(100,-1,1)
+plot(log_link(beta_ts))
+beta_ts <-
+beta_ts <- runif(100,-2,0.5)
+plot(log_link(beta_ts))
+plot(log_link(beta_ts))
+lik_z_recent(1, )
+lik_z_recent(1, t_samp, 3)
+lik_z_recent(1, t_samp, 3, 0,0, beta_ts)
+log_link <- function(beta_t, sex=0, age=0, beta_a=0, beta_s=0){
+p <- 1/(1 + exp(-(beta_t + beta_a*age + beta_s * sex)))
+p
+}
+lik_z_recent <- function(z_r, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0) {
+beta_use <- beta_ts[(t_samp - t_window):t_samp]
+lik <- 1 - prod(log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(z_r * lik + (1-z_r) * (1-lik))
+}
+t_samp <- 50
+beta_ts <- runif(100,-2,0.5)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 3, 0,0, beta_ts)
+lik_z_recent(0, t_samp, 3, 0,0, beta_ts)
+beta_ts <- runif(100,-2,-1)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 3, 0,0, beta_ts)
+beta_ts <- runif(100,-3,-2)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 3, 0,0, beta_ts)
+beta_ts
+lik_z_recent(0, t_samp, 3, 0,0, beta_ts)
+beta_ts <- runif(100,-3,2)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 3, 0,0, beta_ts)
+plot(log_link(beta_ts))
+t_samp <- 50
+t_window <- 3
+beta_ts <- runif(100,-3,2)
+beta_use <- beta_ts[(t_samp - t_window):t_samp]
+beta_use
+log_link(beta_use)
+lik_z_recent <- function(z_r, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0) {
+beta_use <- beta_ts[(t_samp - t_window):t_samp]
+lik <- 1 - prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(z_r * lik + (1-z_r) * (1-lik))
+}
+t_samp <- 50
+t_window <- 3
+beta_ts <- runif(100,-3,2)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 3, 0,0, beta_ts)
+beta_ts <- runif(100,-3,-2)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 3, 0,0, beta_ts)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 3, 0,0, beta_ts)
+lik_z_recent(1, t_samp, 10, 0,0, beta_ts)
+lik_z_recent(1, t_samp, 2, 0,0, beta_ts)
+log_link <- function(beta_t, sex=0, age=0, beta_a=0, beta_s=0){
+p <- 1/(1 + exp(-(beta_t + beta_a*age + beta_s * sex)))
+p
+}
+lik_z_recent <- function(z_r, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0) {
+beta_use <- beta_ts[(t_samp - t_window):t_samp]
+lik <- 1 - prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(z_r * lik + (1-z_r) * (1-lik))
+}
+lik_z_none <- function(z_n, t_samp, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0){
+beta_use <- beta_ts[1:t_samp]
+lik <- 1 - prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(z_n * lik + (1-z_n) * (1-lik))
+}
+lik_z_old <- function(z_o, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0){
+beta_use <- beta_ts[1:(t_samp-t_window)]
+lik <- 1 - prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(z_o * lik + (1-z_o) * (1-lik))
+}
+t_samp <- 50
+t_window <- 3
+beta_ts <- runif(100,-3,-2)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 2, 0,0, beta_ts)
+lik_all <- function(z_r, z_o, z_n, t_samp, t_window, age_i, sex_i,
+beta_ts, beta_a, beta_s){
+liks <- lik_z_recent(z_r, t_samp, t_window, age_i, sex_i, beta_ts, beta_a, beta_s) +
+lik_z_old(z_o, t_samp, t_window, age_i, sex_i, beta_ts, beta_a, beta_s) +
+lik_z_none(z_n, t_samp, age_i, sex_i, beta_ts, beta_a, beta_s)
+liks
+}
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+lik_all(0, 1, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+log_link <- function(beta_t, sex=0, age=0, beta_a=0, beta_s=0){
+p <- 1/(1 + exp(-(beta_t + beta_a*age + beta_s * sex)))
+p
+}
+lik_z_recent <- function(z_r, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0) {
+beta_use <- beta_ts[(t_samp - t_window):t_samp]
+lik <- 1 - prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(lik)
+}
+lik_z_none <- function(z_n, t_samp, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0){
+beta_use <- beta_ts[1:t_samp]
+lik <- 1 - prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(lik)
+}
+lik_z_old <- function(z_o, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0){
+beta_use <- beta_ts[1:(t_samp-t_window)]
+lik <- 1 - prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(lik)
+}
+lik_all <- function(z_r, z_o, z_n, t_samp, t_window, age_i, sex_i,
+beta_ts, beta_a, beta_s){
+liks <- z_r*lik_z_recent(z_r, t_samp, t_window, age_i, sex_i, beta_ts, beta_a, beta_s) +
+z_o*lik_z_old(z_o, t_samp, t_window, age_i, sex_i, beta_ts, beta_a, beta_s) +
+z_n*lik_z_none(z_n, t_samp, age_i, sex_i, beta_ts, beta_a, beta_s)
+liks
+}
+t_samp <- 50
+t_window <- 3
+beta_ts <- runif(100,-3,-2)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 2, 0,0, beta_ts)
+lik_all(0, 1, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+lik_all(0, 0, 1, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+lik_z_none <- function(z_n, t_samp, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0){
+beta_use <- beta_ts[1:t_samp]
+lik <- prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(lik)
+}
+lik_z_old <- function(z_o, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0){
+beta_use <- beta_ts[1:(t_samp-t_window)]
+lik <- 1 - prod(1-log_link(beta_use, sex_i, age_i, beta_a, beta_s))
+return(lik)
+}
+lik_all <- function(z_r, z_o, z_n, t_samp, t_window, age_i, sex_i,
+beta_ts, beta_a, beta_s){
+liks <- z_r*lik_z_recent(z_r, t_samp, t_window, age_i, sex_i, beta_ts, beta_a, beta_s) +
+z_o*lik_z_old(z_o, t_samp, t_window, age_i, sex_i, beta_ts, beta_a, beta_s) +
+z_n*lik_z_none(z_n, t_samp, age_i, sex_i, beta_ts, beta_a, beta_s)
+liks
+}
+t_samp <- 50
+t_window <- 3
+beta_ts <- runif(100,-3,-2)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 2, 0,0, beta_ts)
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+lik_all(0, 1, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+lik_all(0, 0, 1, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+beta_ts <- runif(100,-4,-3)
+plot(log_link(beta_ts))
+lik_z_recent(1, t_samp, 2, 0,0, beta_ts)
+lik_all(0, 0, 1, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=1,
+beta_ts, beta_a=0, beta_s=0)
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=1,
+beta_ts, beta_a=0, beta_s=0.3)
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0.3)
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+beta_ts <- runif(100,-5,-4)
+plot(log_link(beta_ts))
+lik_all <- function(z_r, z_o, z_n, t_samp, t_window, age_i, sex_i,
+beta_ts, beta_a, beta_s){
+if(z_r + z_o + z_n > 1){
+liks <- 0
+} else {
+liks <- z_r*lik_z_recent(z_r, t_samp, t_window, age_i, sex_i, beta_ts, beta_a, beta_s) +
+z_o*lik_z_old(z_o, t_samp, t_window, age_i, sex_i, beta_ts, beta_a, beta_s) +
+z_n*lik_z_none(z_n, t_samp, age_i, sex_i, beta_ts, beta_a, beta_s)
+}
+log(liks)
+}
+t_samp <- 50
+t_window <- 3
+beta_ts <- runif(100,-5,-4)
+plot(log_link(beta_ts))
+lik_all(1, 0, 0, t_samp, t_window, age_i=0, sex_i=0,
+beta_ts, beta_a=0, beta_s=0)
+plot(log_link(beta_ts),ylim=c(0,1))
+library(tidyverse)
+lau_dat <- read_csv("data/lau.csv")
+lau_dat <- lau_dat %>% mutate(oro.N.ct = ifelse(oro.N.ct=="neg",40, oro.N.ct))
+lau_dat$oro.N.ct <- as.numeric(lau_dat$oro.N.ct)
+lau_dat <- lau_dat %>% mutate(viral_load = ((40 - oro.N.ct)/log2(10)))
+ggplot(lau_dat,aes(x=day.onset,y=viral_load)) +
+geom_point() +
+geom_line(aes(group=id)) +
+#scale_y_continuous(trans="reverse") +
+geom_smooth() #
++
+facet_wrap(~id)
+setwd("~/Google Drive/nCoV")
+setwd("~/Google Drive/nCoV/viral_loads_time")
+lau_dat <- read_csv("data/lau.csv")
+setwd("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics")
+lau_dat <- read_csv("data/lau.csv")
+lau_dat <- lau_dat %>% mutate(oro.N.ct = ifelse(oro.N.ct=="neg",40, oro.N.ct))
+lau_dat$oro.N.ct <- as.numeric(lau_dat$oro.N.ct)
+lau_dat <- lau_dat %>% mutate(viral_load = ((40 - oro.N.ct)/log2(10)))
+ggplot(lau_dat,aes(x=day.onset,y=viral_load)) +
+geom_point() +
+geom_line(aes(group=id)) +
+#scale_y_continuous(trans="reverse") +
+geom_smooth() #
+unique(lau_dat$day.onset)
+ggplot(lau_dat) + geom_histogram(aes(x=viral_load)) + facet_wrap(~day.onset)
+ggplot(lau_dat) + geom_histogram(aes(x=viral_load),bibinwidth = ) + facet_wrap(~day.onset)
+ggplot(lau_dat) + geom_histogram(aes(x=viral_load),bibinwidth = 1) + facet_wrap(~day.onset)
+gamma_pars_from_mean_sd <-  function(gamma_mean, gamma_var){
+scale <- gamma_var/gamma_mean
+shape <- gamma_mean/scale
+return(list("shape"=shape,"scale"=scale))
+}
+ct_mean <- function(t, mean1, sd1, max_ct){
+gamma_pars <- gamma_pars_from_mean_sd(mean1, sd1)
+ct <- dgamma(t, gamma_pars[[1]], gamma_pars[[2]])*max_ct
+ct
+}
+ct_mean(0:30,7,2,8)
+plot(ct_mean(0:30,7,2,8))
+ct_mean <- function(t, mean1, sd1, max_ct){
+gamma_pars <- gamma_pars_from_mean_sd(mean1, sd1)
+ct <- dgamma(t, gamma_pars[[1]], scale=gamma_pars[[2]])*max_ct
+ct
+}
+plot(ct_mean(0:30,7,2,8))
+plot(ct_mean(0:30,7,2,10))
+plot(ct_mean(0:30,7,5,10))
+plot(ct_mean(0:30,7,20,10))
+plot(ct_mean(0:30,7,20,100))
+plot(ct_mean(0:30,7,20,50))
+plot(ct_mean(0:30,7,20,70))
+plot(ct_mean(0:30,7,25,70))
+plot(ct_mean(0:30,7,25,70))
+gamma_pars_from_mean_sd <-  function(gamma_mean, gamma_var){
+scale <- gamma_var/gamma_mean
+shape <- gamma_mean/scale
+return(list("shape"=shape,"scale"=scale))
+}
+ct_mean <- function(t, mean1, sd1, max_ct){
+gamma_pars <- gamma_pars_from_mean_sd(mean1, sd1)
+ct <- dgamma(t, gamma_pars[[1]], scale=gamma_pars[[2]])*max_ct
+ct
+}
+ct_prob <- function(ct, t, mean1=7, sd1=25, max_ct=70, sd_obs) {
+prob <- dnorm(ct, ct_mean(t, mean1, sd1, max_ct), sd_obs, TRUE)
+prob
+}
+plot(ct_mean(0:30,7,25,70))
+ct_prob(5,10,sd_obs=1)
+exp(0.1*0:100)
+incidence <- exp(0.2*0:100)
+incidence
+incidence <- exp(0.2*0:50)
+incidence
+cts_res <- matrix(nrow=length(incidence), ncol=10)
+## For every day
+for(i in 1:length(incidence)){
+cts_res <- matrix(nrow=length(incidence), ncol=10)
+## For every day
+## For every day
+for(i in 1:length(incidence)){
+## Go back through each previous day and get the distribution of Cts from then
+for(j in 1:i){
+cts_res[i,] <- cts_res[i,] + incidence[j]*dnorm(0:10, ct_mean(i-j, 7, 25, 70))
+}
+}
+incidence[j]
+ct_mean(0, 7, 25, 70)
+dnorm(0:10,ct_mean(0, 7, 25, 70),1)
+cts_res <- matrix(nrow=length(incidence), ncol=100)
+## For every day
+for(i in 1:length(incidence)){
+## Go back through each previous day and get the distribution of Cts from then
+for(j in 1:i){
+cts_res[i,] <- cts_res[i,] + incidence[j]*dnorm(0:100, ct_mean(i-j, 7, 25, 70),1)
+}
+}
+dnorm(0:100, ct_mean(i-j, 7, 25, 70),1)
+plot(dnorm(0:100, ct_mean(i-j, 7, 25, 70),1))
+cts_res <- matrix(nrow=length(incidence), ncol=101)
+## For every day
+for(i in 1:length(incidence)){
+## Go back through each previous day and get the distribution of Cts from then
+for(j in 1:i){
+cts_res[i,] <- cts_res[i,] + incidence[j]*dnorm(0:100, ct_mean(i-j, 7, 25, 70),1)
+}
+}
+cts_res
+cts_res[i,]
+incidence[j]
+incidence[j]*dnorm(0:100, ct_mean(i-j, 7, 25, 70),1)
+cts_res <- matrix(0,nrow=length(incidence), ncol=101)
+## For every day
+for(i in 1:length(incidence)){
+## Go back through each previous day and get the distribution of Cts from then
+for(j in 1:i){
+cts_res[i,] <- cts_res[i,] + incidence[j]*dnorm(0:100, ct_mean(i-j, 7, 25, 70),1)
+}
+}
+cts_res
+plot(cts_res[1,])
+plot(cts_res[2,])
+plot(cts_res[3,])
+plot(cts_res[3,])
+plot(cts_res[40,])
+plot(cts_res[40,],type='l')
+plot(cts_res[35,],type='l')
+plot(cts_res[1,],type='l')
+plot(cts_res[2,],type='l')
+plot(cts_res[3,],type='l')
+plot(cts_res[4,],type='l')
+plot(cts_res[10,],type='l')
+cts_res <- matrix(0,nrow=length(incidence), ncol=21)
+## For every day
+for(i in 1:length(incidence)){
+## Go back through each previous day and get the distribution of Cts from then
+for(j in 1:i){
+cts_res[i,] <- cts_res[i,] + incidence[j]*dnorm(0:20, ct_mean(i-j, 7, 25, 70),1)
+}
+}
+image(cts_res)
+image(t(cts_res))
+wow <- reshape2::melt(cts_res)
+wow
+head(wow)
+colnames(wow) <- paste0("Ct_",1:ncol(wow))
+wow <- reshape2::melt(cts_res)
+head(wow)
+colnames(cts_res) <- paste0("Ct_",1:ncol(cts_res))
+wow <- reshape2::melt(cts_res)
+head(wow)
+ggplot() + geom_tile(aes(x=Var1, y=Var2,fill=value))
+ggplot(wow) + geom_tile(aes(x=Var1, y=Var2,fill=value))
+ggplot(wow) + geom_tile(aes(x=Var1, y=Var2,fill=value)) + scale_fill_gradient(low="blue",high="orange")
+source("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/simulation_functions.R")
+source("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/simulation_functions.R")
+source("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/model_funcs.R")
+set.seed(0)
+## Entire popuation size (this is MA in 2018 from US Census Bureau)
+population_n <- 6900000
+## Sample size
+n <- 500000
+## Duration of epidemic in days
+times <- 0:365
+## Viral kinetics pars
+## Change wd to local path
+parTab <- read.csv("pars/partab.csv",stringsAsFactors=FALSE)
+## Simulate the epidemic process
+#epidemic_process <- simulate_epidemic_process(population_n,0.1,times)
+#epidemic_process$plot
+seir_pars <- c("R0"=2.2,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
+epidemic_process <- simulate_seir_process(population_n,seir_pars,times)
+epidemic_process$plot
+library(tidyverse)
+library(ggplot2)
+library(deSolve)
+library(ggpubr)
+source("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/simulation_functions.R")
+source("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/model_funcs.R")
+set.seed(0)
+## Entire popuation size (this is MA in 2018 from US Census Bureau)
+population_n <- 6900000
+## Sample size
+n <- 500000
+## Duration of epidemic in days
+times <- 0:365
+## Simulate the epidemic process
+#epidemic_process <- simulate_epidemic_process(population_n,0.1,times)
+#epidemic_process$plot
+seir_pars <- c("R0"=2.2,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
+epidemic_process <- simulate_seir_process(population_n,seir_pars,times)
+epidemic_process$plot
+epidemic_process$incidence
+incidence <- epidemic_process$incidence
+cts_res <- matrix(0,nrow=length(incidence), ncol=21)
+## For every day
+for(i in 1:length(incidence)){
+## Go back through each previous day and get the distribution of Cts from then
+for(j in 1:i){
+cts_res[i,] <- cts_res[i,] + incidence[j]*dnorm(0:20, ct_mean(i-j, 7, 25, 70),1)
+}
+}
+colnames(cts_res) <- paste0("Ct_",1:ncol(cts_res))
+wow <- reshape2::melt(cts_res)
+ggplot(wow) + geom_tile(aes(x=Var1, y=Var2,fill=value)) + scale_fill_gradient(low="blue",high="orange")
+incidence <- epidemic_process$incidence
+cts_res <- matrix(0,nrow=length(incidence), ncol=11)
+## For every day
+for(i in 1:length(incidence)){
+## Go back through each previous day and get the distribution of Cts from then
+for(j in 1:i){
+cts_res[i,] <- cts_res[i,] + incidence[j]*dnorm(0:10, ct_mean(i-j, 7, 25, 70),1)
+}
+}
+colnames(cts_res) <- paste0("Ct_",1:ncol(cts_res))
+wow <- reshape2::melt(cts_res)
+ggplot(wow) + geom_tile(aes(x=Var1, y=Var2,fill=value)) + scale_fill_gradient(low="blue",high="orange")
+cts_res
+cts_res1 <- cts_res/rowSums(cts_res1)
+cts_res1 <- cts_res/rowSums(cts_res)
+colnames(cts_res1) <- paste0("Ct_",1:ncol(cts_res))
+wow <- reshape2::melt(cts_res1)
+ggplot(wow) + geom_tile(aes(x=Var1, y=Var2,fill=value)) + scale_fill_gradient(low="blue",high="orange")
+plot(incidence)
+incidence <- epidemic_process$incidence[1:200]
+cts_res <- matrix(0,nrow=length(incidence), ncol=11)
+## For every day
+for(i in 1:length(incidence)){
+## Go back through each previous day and get the distribution of Cts from then
+for(j in 1:i){
+cts_res[i,] <- cts_res[i,] + incidence[j]*dnorm(0:10, ct_mean(i-j, 7, 25, 70),1)
+}
+}
+colnames(cts_res1) <- paste0("Ct_",1:ncol(cts_res))
+wow <- reshape2::melt(cts_res1)
+cts_res1 <- cts_res/rowSums(cts_res)
+colnames(cts_res1) <- paste0("Ct_",1:ncol(cts_res))
+wow <- reshape2::melt(cts_res1)
+ggplot(wow) + geom_tile(aes(x=Var1, y=Var2,fill=value)) + scale_fill_gradient(low="blue",high="orange")
+cts_res1 <- cts_res/rowSums(cts_res)
+colnames(cts_res1) <- paste0("Ct_",0:ncol(cts_res))
+wow <- reshape2::melt(cts_res1)
+ggplot(wow) + geom_tile(aes(x=Var1, y=Var2,fill=value)) + scale_fill_gradient(low="blue",high="orange")
+colnames(cts_res1) <- paste0("Ct_",0:(ncol(cts_res)-1)
+colnames(cts_res1) <- paste0("Ct_",0:(ncol(cts_res)-1))
+wow <- reshape2::melt(cts_res1)
+ggplot(wow) + geom_tile(aes(x=Var1, y=Var2,fill=value)) + scale_fill_gradient(low="blue",high="orange")
+cts_res
+apply(cts_res, 1, function(x) x*(0:10))
+rowSums(apply(cts_res, 1, function(x) x*(0:10)))
+colSums(apply(cts_res, 1, function(x) x*(0:10)))
+plot(colSums(apply(cts_res, 1, function(x) x*(0:10))))
+cts_res[1,]
+cts_res[10,]
+sum(cts_res[10,])
+plot(cts_res[10,])
+plot(cts_res1[10,])
+sum(cts_res1[10,])
+apply(cts_res1, 1, function(x) x*(0:10)))
+apply(cts_res1, 1, function(x) x*(0:10))
+rowSums(apply(cts_res1, 1, function(x) x*(0:10)))
+nrow(cts_res1)
+apply(cts_res1, 2, function(x) x*(0:10))
+warnings()
+apply(cts_res1, 2, function(x) x*(0:11))
+apply(cts_res1, 2, function(x) x*(0:9))
+rowSums(apply(cts_res1, 2, function(x) x*(0:9)))
+plot(rowSums(apply(cts_res1, 2, function(x) x*(0:9))))
+cts_res1
+cts_res1[1,]
+cts_res1[2,]
+cts_res1[2,]*seq(0:10)
+sum(cts_res1[2,]*seq(0:10))
+apply(cts_res1, 1, function(x) x * 0:10)
+rowSums(apply(cts_res1, 1, function(x) x * 0:10))
+rowSums(t(apply(cts_res1, 1, function(x) x * 0:10)))
+plot(rowSums(t(apply(cts_res1, 1, function(x) x * 0:10))))

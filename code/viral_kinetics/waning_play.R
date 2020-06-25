@@ -1,11 +1,24 @@
 library(tidyverse)
 waning_dat <- read_csv("data/waning.csv")
 waning_dat <- waning_dat %>% group_by(Patients) %>% mutate(time1 = time - min(time,na.rm=TRUE)) %>% drop_na()
-greb <- waning_dat %>% group_by(time1) %>% summarise(n_positive=sum(positive),
+greb <- waning_dat %>% group_by(time) %>% summarise(n_positive=sum(positive),
                                                     n=n(),
-                                                    prop_positive=n_positive/n)
+                                                    prop_positive=n_positive/n,
+                                                    lower_confint=prop.test(n_positive, n)$conf.int[1],
+                                                    upper_confint=prop.test(n_positive, n)$conf.int[2]
+                                                    
+                                                    )
 greb <- greb %>% drop_na()
-waning_dat1 <- waning_dat %>% drop_na() %>% ungroup() %>% select(Patients, positive, time1) %>% unique() %>% arrange(time1,Patients)
+ggplot(greb) +
+  geom_ribbon(aes(x=time,ymin=lower_confint,ymax=upper_confint),alpha=0.25) +
+  geom_line(aes(x=time,y=prop_positive))
+
+waning_dat1 <- waning_dat %>% 
+  drop_na() %>% 
+  ungroup() %>% 
+  select(Patients, positive, time) %>% 
+  unique() %>% 
+  arrange(time,Patients)
 
 waning_dat1$Patients <- as.factor(waning_dat1$Patients)
 waning_dat1$time1 <- paste0("day",waning_dat1$time1)

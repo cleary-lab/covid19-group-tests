@@ -12,15 +12,16 @@ set.seed(0)
 population_n <- 6900000
 
 ## Sample size
-n <- 500000
+n <- 10000
 
 ## Duration of epidemic in days
 times <- 0:365
 
 ## Viral kinetics pars
 ## Change wd to local path
-parTab <- read.csv("pars/partab.csv",stringsAsFactors=FALSE)
-chains <- load_mcmc_chains("~/Documents/GitHub/covid19-group-tests/chains", parTab, FALSE, 1, burnin=200000,multi=TRUE)
+parTab <- read.csv("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/pars/partab_multivariate_hinge.csv",stringsAsFactors=FALSE)
+#chains <- load_mcmc_chains("~/Documents/GitHub/covid19-group-tests/chains", parTab, FALSE, 1, burnin=200000,multi=TRUE)
+chains <- load_mcmc_chains("~/Google Drive/nCoV/pool_samples/chains_multivariate_sputum/", parTab, FALSE, 10, burnin=1000000,multi=TRUE)
 chain <- as.data.frame(chains[[2]])
 
 pars <- list(viral_peak_mean=mean(chain$viral_peak_mean), viral_peak_sd=mean(chain$viral_peak_sd),
@@ -30,7 +31,7 @@ pars <- list(viral_peak_mean=mean(chain$viral_peak_mean), viral_peak_sd=mean(cha
 ## Simulate the epidemic process
 #epidemic_process <- simulate_epidemic_process(population_n,0.1,times)
 #epidemic_process$plot
-seir_pars <- c("R0"=2.2,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
+seir_pars <- c("R0"=2.5,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
 epidemic_process <- simulate_seir_process(population_n,seir_pars,times)
 epidemic_process$plot
 
@@ -45,16 +46,28 @@ infection_times <- simulate_infection_times(n, epidemic_process$overall_prob_inf
 onset_times <- simulate_symptom_onsets(infection_times)
 
 ## Simulate viral loads for the sample population
+simulated_data <- simulate_viral_loads_hinge(infection_times, times, chain, parTab)
+
 simulated_data <- simulate_viral_loads(infection_times, onset_times, times, pars)
+simulated_data <- simulate_viral_loads_by_inf2(infection_times[1:nrow(delays)], times,delays,0,3)
+
 
 viral_loads <- simulated_data$viral_loads
-viral_loads_tmp <- viral_loads[1:1000,]
+viral_loads <- simulated_data
+viral_loads_tmp <- viral_loads[1:100,]
 
 viral_loads_melted <- reshape2::melt(viral_loads_tmp)
 colnames(viral_loads_melted) <- c("i","t","viral_load")
+
+
+viral_loads_melted$ct <- 40 - log2(10)*(viral_loads_melted$viral_load-LOD) + rnorm(nrow(viral_loads_melted),0, 5)
+viral_loads_melted[viral_loads_melted$viral_load <= 0, "ct"] <- 40
+viral_loads_melted[viral_loads_melted$ct > 40, "ct"] <- 40
+viral_loads_melted %>% filter(ct < 40) %>% ggplot() + geom_histogram(aes(x=ct),binwidth=1)
+
 p <- ggplot(viral_loads_melted) + 
-  geom_tile(aes(x=t,y=i,fill=viral_load)) + 
-  scale_fill_viridis_c() +
+  geom_tile(aes(x=t,y=i,fill=ct)) + 
+  scale_fill_viridis_c(trans="reverse") +
   theme_bw() +
   ylab("Individual") + xlab("Time")
 #pdf("viral_loads.pdf",height=5,width=6)
