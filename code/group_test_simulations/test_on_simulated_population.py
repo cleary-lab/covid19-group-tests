@@ -3,6 +3,33 @@ from scipy.stats import poisson
 import glob,os
 import argparse
 
+# based on colbourn2006hoc VII.5.46
+def genpairs(n):
+	# Create starter design
+	# starter = [(0,2*n-1)] + [(i,-i % (2*n-1)) for i in range(1,n)]
+	Astart = np.zeros((2*n,n))
+	Astart[[0,2*n-1],0] = 1
+	for i in range(1,n):
+		Astart[[i,-i % (2*n-1)],i] = 1
+	
+	# Add cycled versions
+	A = np.copy(Astart)
+	for r in range(1,2*n-1):
+		Astart = np.vstack((Astart[0,:],Astart[2:,:],Astart[1,:]))
+		A = np.hstack((A,Astart))
+	
+	# checks
+	assert all(np.sum(Astart,axis=1) == 1)  # starter should have no overlaps
+	assert all(np.sum(Astart,axis=0) == 2)  # and two pools per subject
+	assert np.unique(A,axis=1).shape == A.shape  # all columns should be unique
+	
+	return A
+
+def ordered_pairs(m,n):
+	assert m % 2 == 0
+	Abase = genpairs(m//2)
+	return Abase[:,[i % Abase.shape[1] for i in range(n)]]
+
 def grid_balanced(nlist):
 	m = sum(nlist)
 	n = np.product(nlist)
@@ -109,6 +136,7 @@ if __name__ == '__main__':
 	parser.add_argument('--expected-pos-prob', help='1-expected faulty test rate (for setting error correction threshold)',type=float,default=0.95)
 	parser.add_argument('--grid-balanced', help='List of grid dimensions, otherwise random (default)',default=None)
 	parser.add_argument('--steiner', help='Number of individuals to test, otherwise random (default)',default=None)
+	parser.add_argument('--ordered-pairs', help='Use ordered pairs, q-split must be 2, uses n-individuals and m-pools',action='store_true')
 	args,_ = parser.parse_known_args()
 	f = open(args.viral_load_matrix)
 	timepoints = f.readline()
@@ -150,6 +178,13 @@ if __name__ == '__main__':
 		m_pools = A.shape[0]
 		q_split = A.sum(axis=0)[0]
 		assert np.all(A.sum(axis=0) == q_split)
+	elif args.ordered_pairs:
+		print('using ordered pairs design')
+		m_pools = args.m_pools
+		n_individuals = args.n_individuals
+		q_split = args.q_split
+		assert q_split == 2
+		A = ordered_pairs(m_pools,n_individuals)
 	else:
 		m_pools = args.m_pools
 		n_individuals = args.n_individuals
