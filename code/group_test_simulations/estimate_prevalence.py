@@ -61,6 +61,8 @@ if __name__ == '__main__':
 	parser.add_argument('--kde-path', help='Path to KDEs fit for each value of k, including prefix (ie, seir_kde)')
 	parser.add_argument('--p0', help='Initial frequency estimate',type=float,default=0.005)
 	parser.add_argument('--fp-rate', help='Estimated false positive PCR rate',type=float,default=0.002)
+	parser.add_argument('--CI',dest='CI',help='Get bootstrap estimates of confidence interval', action='store_true')
+	parser.set_defaults(CI=False)
 	args,_ = parser.parse_known_args()
 	for key,value in vars(args).items():
 		print('%s\t%s' % (key,str(value)))
@@ -72,14 +74,15 @@ if __name__ == '__main__':
 		sys.exit()
 	Kernels = [joblib.load('%s.k-%d.pkl' % (args.kde_path,k)) for k in range(1,args.batch_size+1)]
 	p_est = run_em(Y,args.num_batches,args.batch_size,args.p0,Kernels,args.fp_rate)
-	# bootstrap confidence intervals
-	P = []
-	for i in range(500):
-		y = np.random.choice(Y,len(Y),replace=True)
-		p = run_em(y,args.num_batches,args.batch_size,args.p0,Kernels,args.fp_rate)
-		P.append(p)
-	p1 = np.percentile(P,2.5)
-	p2 = np.percentile(P,97.5)
-	print(p1,p2)
 	print('Estimated prevalence: %.4f%%' % (p_est*100))
-	print('95%% confidence interval: %.4f%% - %.4f%%' % (p1*100,p2*100))
+	if args.CI:
+		# bootstrap confidence intervals
+		P = []
+		for i in range(500):
+			y = np.random.choice(Y,len(Y),replace=True)
+			p = run_em(y,args.num_batches,args.batch_size,args.p0,Kernels,args.fp_rate)
+			P.append(p)
+		p1 = np.percentile(P,2.5)
+		p2 = np.percentile(P,97.5)
+		print(p1,p2)
+		print('95%% confidence interval: %.4f%% - %.4f%%' % (p1*100,p2*100))
