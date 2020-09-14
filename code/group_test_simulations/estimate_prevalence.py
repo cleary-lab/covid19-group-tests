@@ -27,14 +27,17 @@ def undetected_prob(Kernels,n,fp_rate,Ct_thresh=40):
 		ck0.append(p)
 	return ck0
 
+def softplus(x):
+	return np.log(1 + np.exp(x))
+
 def run_em(y,b,n,p0,Kernels,fp_rate,max_itr=100,min_itr=10,tol=1e-3,n_vals=50):
 	# calculate all the conditional densities for the observed values (y) up front
 	CK = []
 	ck0 = undetected_prob(Kernels,n,fp_rate)
 	for i in range(b):
-		if y[i] > -1: # -1 indicates undetected
-			conditional_k = [np.exp(Kernels[0].score_samples([[y[i] - np.log2(10)*np.log10(n)]])[0])*fp_rate]+[np.exp(Kernels[k].score_samples([[y[i] - np.log2(10)*np.log10(n)]])[0]) for k in range(n)] #conditional density of y*n, given k
-		else:
+		if y[i] > -1:
+			conditional_k = [np.exp(Kernels[0].score_samples([[softplus(y[i] - np.log2(10)*np.log10(n))]])[0])*fp_rate]+[np.exp(Kernels[k].score_samples([[softplus(y[i] - np.log2(10)*np.log10(n))]])[0]) for k in range(n)] #conditional density of y*n, given k
+		else: # indicates undetected
 			conditional_k = ck0
 		CK.append(conditional_k)
 	for itr in range(max_itr):
@@ -69,4 +72,14 @@ if __name__ == '__main__':
 		sys.exit()
 	Kernels = [joblib.load('%s.k-%d.pkl' % (args.kde_path,k)) for k in range(1,args.batch_size+1)]
 	p_est = run_em(Y,args.num_batches,args.batch_size,args.p0,Kernels,args.fp_rate)
+	# bootstrap confidence intervals
+	P = []
+	for i in range(500):
+		y = np.random.choice(Y,len(Y),replace=True)
+		p = run_em(y,args.num_batches,args.batch_size,args.p0,Kernels,args.fp_rate)
+		P.append(p)
+	p1 = np.percentile(P,2.5)
+	p2 = np.percentile(P,97.5)
+	print(p1,p2)
 	print('Estimated prevalence: %.4f%%' % (p_est*100))
+	print('95%% confidence interval: %.4f%% - %.4f%%' % (p1*100,p2*100))

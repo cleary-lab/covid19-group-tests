@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import poisson
+from scipy.sparse import load_npz
 import glob,os
 import argparse
 
@@ -15,12 +16,14 @@ def decode(y,A,e):
 	return (x < e)
 
 def sample_pooled_viral_load(A_i,viral_load):
+	# poisson sampler has issues with super large numbers...
+	viral_load[viral_load > 1e15] = 1e15
 	sampled_load = poisson.rvs(viral_load/A_i.sum())
 	total_sampled_load = A_i.dot(sampled_load)
 	return total_sampled_load
 
 def get_n_random_samples(A,ViralLoad,LOD,fp_rate):
-	idx_n = np.random.choice(ViralLoad.shape[0],A.shape[1],replace=False)
+	idx_n = np.random.choice(ViralLoad.shape[0],A.shape[1])
 	viral_load = ViralLoad[idx_n]
 	x_true = (viral_load > 0).astype(np.float)
 	y = np.zeros(A.shape[0])
@@ -30,7 +33,7 @@ def get_n_random_samples(A,ViralLoad,LOD,fp_rate):
 			y[i] = 1
 	return x_true,y,idx_n
 
-def run_test(A,ViralLoad,InfectionTime,OnsetTime,LOD,e,fp_rate,itr=2500):
+def run_test(A,ViralLoad,InfectionTime,OnsetTime,LOD,err_tol,fp_rate,itr=200000,pos_tol=2500):
 	true_pos = 0
 	total_pos = 0
 	T = []
@@ -40,18 +43,21 @@ def run_test(A,ViralLoad,InfectionTime,OnsetTime,LOD,e,fp_rate,itr=2500):
 	R = []
 	for __ in range(itr):
 		x,y,idx_n = get_n_random_samples(A,ViralLoad,LOD,fp_rate)
-		x_hat = decode(y,A,e)
+		x_hat = decode(y,A,err_tol)
 		t = x_hat.sum() # all putative positives
-		x_hat = x_hat*(ViralLoad[idx_n] > LOD) # samples that are putative positive and above the LOD
-		true_pos += x.dot(x_hat)
-		total_pos += x.sum()
 		T.append(t)
 		if x.sum() > 0:
+			viralload = ViralLoad[idx_n]
+			x_hat = x_hat*(viralload > LOD) # samples that are putative positive and above the LOD
+			true_pos += x.dot(x_hat)
+			total_pos += x.sum()
 			ki = np.where(x)[0]
 			R.append(x[ki]*x_hat[ki])
-			Vl.append(ViralLoad[idx_n][ki])
+			Vl.append(viralload[ki])
 			Vi.append(InfectionTime[idx_n][ki])
-			Vo.append(OnsetTime[idx_n][ki])
+			Vo.append(PeakTime[idx_n][ki])
+		if (__ > 500) and (total_pos > pos_tol):
+			break
 	T = np.array(T)
 	if len(R):
 		R = np.hstack(R)
@@ -67,9 +73,8 @@ def run_test(A,ViralLoad,InfectionTime,OnsetTime,LOD,e,fp_rate,itr=2500):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--viral-load-matrix', help='Path to viral load matrix (individuals x time points)')
+	parser.add_argument('--viral-load-matrix', help='Path to viral load matrix (individuals x time points) in sparse format')
 	parser.add_argument('--infection-time', help='Path to time of infection for each individual')
-	parser.add_argument('--onset-time', help='Path to time of symptom onset for each individual')
 	parser.add_argument('--savepath', help='Path to save summary figure')
 	parser.add_argument('--n-individuals', help='Number of individuals to test (n)',type=int)
 	parser.add_argument('--m-pools', help='Number of pools (m)',type=int)
@@ -81,21 +86,27 @@ if __name__ == '__main__':
 	parser.add_argument('--pool-compositions', help='Path to matrix of pool compositions, otherwise random (default)',default=None)
 	parser.add_argument('--expected-pos-prob', help='1-expected faulty test rate (for setting error correction threshold)',type=float,default=0.95)
 	args,_ = parser.parse_known_args()
-	f = open(args.viral_load_matrix)
-	timepoints = f.readline()
-	ViralLoad = [[float(l) for l in line.strip().split(',')] for line in f]
-	f.close()
-	ViralLoad = 10**np.array(ViralLoad) - 1
+	# number of faulty tests to tolerate
+	err_tol = np.round(2*(1-args.expected_pos_prob)*args.q_split) + 1e-7
+	for key,value in vars(args).items():
+		print('%s\t%s' % (key,str(value)))
+	print('error_tol\t%d' % err_tol)
 	f = open(args.infection_time)
 	header = f.readline()
-	InfectionTime = [float(line.strip()) for line in f]
+	InfectionTime = []
+	for line in f:
+		if '.' in line: # non-empty lines
+			InfectionTime.append(float(line.strip().split(',')[-1]))
+		else:
+			InfectionTime.append(-1)
+	f.close()
 	f.close()
 	InfectionTime = np.array(InfectionTime)
-	f = open(args.onset_time)
-	header = f.readline()
-	OnsetTime = [float(line.strip()) for line in f]
-	f.close()
-	OnsetTime = np.array(OnsetTime)
+	print('parsed infection times for %d individuals' % len(InfectionTime))
+	ViralLoad = load_npz(args.viral_load_matrix)
+	timepoints = np.load(args.viral_load_matrix.replace('viral_loads.npz', 'timepoints.npy'))
+	PeakTime = np.load(args.viral_load_matrix.replace('viral_loads.npz', 'peak_times.npy'))
+	print('loaded viral load matrix with shape (%d, %d) and %d entries' % (ViralLoad.shape[0], ViralLoad.shape[1], len(ViralLoad.data)))
 	E_avg = np.zeros(ViralLoad.shape[1])
 	Recall_combined = np.zeros(ViralLoad.shape[1])
 	Recall_n, Vl, Vi, Vo = [],[],[],[]
@@ -105,20 +116,16 @@ if __name__ == '__main__':
 		A = np.load(args.pool_compositions)
 	else:
 		A = random_binary_balanced(args.m_pools,args.n_individuals,args.q_split)
-	# number of faulty tests to tolerate
-	e = np.round(2*(1-args.expected_pos_prob)*args.q_split) + 1e-7
-	for key,value in vars(args).items():
-		print('%s\t%s' % (key,str(value)))
-	print('error_tol\t%d' % e)
 	for t in range(args.start_time,args.end_time+1):
-		ea,rec,r,vl,vi,vo = run_test(A,ViralLoad[:,t],t-InfectionTime,t-OnsetTime,args.LOD,e,args.fp_rate)
+		viralload = ViralLoad[:,t].toarray()[:,0]
+		ea,rec,r,vl,vi,vo = run_test(A,viralload,t-InfectionTime,t-PeakTime,args.LOD,err_tol,args.fp_rate)
 		Recall_n.append(r)
 		Vl.append(vl)
 		Vi.append(vi)
 		Vo.append(vo)
 		E_avg[t] = ea
 		Recall_combined[t] = rec
-		print('Time: %d; Case frequency: %.5f; Efficiency: %.2f; Sensitivity: %.4f; Fraction >LOD: %.4f' % (t,np.average(ViralLoad[:,t] > 0),ea,rec, np.average(ViralLoad[ViralLoad[:,t] > 0,t] > args.LOD)))
+		print('Time: %d; Case frequency: %.5f; Efficiency: %.2f; Sensitivity: %.4f; Fraction >LOD: %.4f' % (t,np.average(viralload > 0),ea,rec, np.average(viralload[viralload > 0] > args.LOD)))
 	np.save('%s/Eff_avg.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),E_avg)
 	np.save('%s/Recall_combined.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),Recall_combined)
 	np.save('%s/Recall_n.n-%d_m-%d_q-%d.npy' % (args.savepath,args.n_individuals,args.m_pools,args.q_split),Recall_n)
