@@ -137,6 +137,7 @@ if __name__ == '__main__':
 	parser.add_argument('--grid-balanced', help='List of grid dimensions, otherwise random (default)',default=None)
 	parser.add_argument('--steiner', help='Number of individuals to test, otherwise random (default)',default=None)
 	parser.add_argument('--ordered-pairs', help='Use ordered pairs, q-split must be 2, uses n-individuals and m-pools',action='store_true')
+	parser.add_argument('--partition', help='Use a partition, q-split must be 1, uses n-individuals and m-pools',action='store_true')
 	args,_ = parser.parse_known_args()
 	f = open(args.viral_load_matrix)
 	timepoints = f.readline()
@@ -185,6 +186,13 @@ if __name__ == '__main__':
 		q_split = args.q_split
 		assert q_split == 2
 		A = ordered_pairs(m_pools,n_individuals)
+	elif args.partition:
+		print('using partition design')
+		m_pools = args.m_pools
+		n_individuals = args.n_individuals
+		q_split = args.q_split
+		assert q_split == 1
+		A = partition(m_pools,n_individuals)
 	else:
 		m_pools = args.m_pools
 		n_individuals = args.n_individuals
