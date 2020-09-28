@@ -55,7 +55,7 @@ def run_test(A,ViralLoad,InfectionTime,OnsetTime,LOD,err_tol,fp_rate,itr=200000,
 			R.append(x[ki]*x_hat[ki])
 			Vl.append(viralload[ki])
 			Vi.append(InfectionTime[idx_n][ki])
-			Vo.append(PeakTime[idx_n][ki])
+			Vo.append(OnsetTime[idx_n][ki])
 		if (__ > 500) and (total_pos > pos_tol):
 			break
 	T = np.array(T)
