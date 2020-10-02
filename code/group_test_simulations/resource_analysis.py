@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import load_npz
 import glob,os
 import matplotlib as mpl
 mpl.use('Agg')
@@ -31,12 +32,9 @@ if __name__ == '__main__':
 	parser.add_argument('--LOD', help='Limit of detection',type=float,default=100)
 	parser.add_argument('--min-resources', help='Minimum number of resources to consider',type=int,default=12)
 	args,_ = parser.parse_known_args()
-	f = open(args.viral_load_matrix)
-	timepoints = f.readline()
-	ViralLoad = [[float(l) for l in line.strip().split(',')] for line in f]
-	f.close()
-	ViralLoad = 10**np.array(ViralLoad) - 1
-	e0 = np.average([np.average(v[v>0] > args.LOD) for v in ViralLoad[:,args.start_time:args.end_time].T if v.sum()!=0])
+	ViralLoad = load_npz(args.viral_load_matrix)
+	timepoints = np.load(args.viral_load_matrix.replace('viral_loads.npz', 'timepoints.npy'))
+	e0 = np.average([np.average(v.data > args.LOD) for v in ViralLoad[:,args.start_time:args.end_time].T if len(v.data)>0])
 	Results = []
 	unique_nm = []
 	FP = glob.glob(os.path.join(args.resultspath, 'Recall_combined.*.npy'))
@@ -58,6 +56,8 @@ if __name__ == '__main__':
 	unique_nm = np.unique(unique_nm)
 	X = np.zeros((len(unique_nm),len(unique_nm)))
 	fig = plt.figure(num=None, figsize=(8, 8))
+	f = open('%s/summary.resource_t0-%d_t1-%d.tmp.csv' % (args.resultspath, args.start_time, args.end_time),'w')
+	_ = f.write(','.join(['Sample budget','Test budget','Design samples','Design pools','Design sample split','Design runs per day','Design effectiveness']) + '\n')
 	for i,n_swabs in enumerate(unique_nm):
 		for j,m_kits in enumerate(unique_nm):
 			nm_min = min(n_swabs,m_kits)
@@ -70,14 +70,16 @@ if __name__ == '__main__':
 					if effective_tests > best[0]:
 						best = (effective_tests,n,m,q,np.average(n_tests))
 			X[j,i] = best[0]/(e0*nm_min)
-			if X[j,i] < 10:
+			if X[j,i] > 10:
 				# white font
 				_=plt.text(i,j,'%d\n%d\n%d\n%.1f' % (best[1],best[2],best[3],best[4]), horizontalalignment='center',verticalalignment='center',color="w",fontsize=7)
 			else:
 				# black font
 				_=plt.text(i,j,'%d\n%d\n%d\n%.1f' % (best[1],best[2],best[3],best[4]), horizontalalignment='center',verticalalignment='center',color="black",fontsize=7)
+			_ = f.write('%d,%d,%d,%d,%d,%f,%f\n' % (n_swabs,m_kits,best[1],best[2],best[3],best[4],X[j,i]))
+	f.close()
 	print(X.min(),X.max())
-	_=plt.imshow(X,origin='lower',cmap='cubehelix')
+	_=plt.imshow(X,origin='lower',cmap='Blues')
 	_=plt.xticks(np.arange(len(unique_nm)), labels=unique_nm)
 	_=plt.yticks(np.arange(len(unique_nm)), labels=unique_nm)
 	_=plt.xlabel('Daily samples collected')
@@ -86,6 +88,6 @@ if __name__ == '__main__':
 	_=plt.grid(b=None)
 	_=plt.title('Effectiveness of optimal design from days %d-%d' % (args.start_time,args.end_time))
 	_=plt.tight_layout()
-	_=plt.savefig('%s/summary.resource.pdf' % args.resultspath)
+	_=plt.savefig('%s/summary.resource_t0-%d_t1-%d.tmp.pdf' % (args.resultspath, args.start_time, args.end_time))
 	plt.close()
 		

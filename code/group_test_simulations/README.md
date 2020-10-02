@@ -26,10 +26,13 @@ observations    ../../examples/observations.Ct_values.example_1.txt
 kde_path        ../../examples/KDEs/seir_kde
 p0      0.005
 fp_rate 0.002
-Estimated prevalence: 0.0106%
+CI      False
+Estimated prevalence: 0.0105%
 ```
 
 (Note: p0 is the initial estimate of the EM algorithm. In this case, 0.5%)
+
+You can also use the --CI flag to compute bootstrap confidence intervals, though this substantially increases runtime.
 
 ### Prevalence example 2
 Now let's suppose we collected **N=2,304** samples and split them into **b=24** pools each with **n=96** samples. If 3/2,304 samples were positive (**p=0.1302%**), then our pooled measurements might look like [example_2.txt](../../examples/observations.Ct_values.example_2.txt).
@@ -49,7 +52,8 @@ observations    ../../examples/observations.Ct_values.example_2.txt
 kde_path        ../../examples/KDEs/seir_kde
 p0      0.005
 fp_rate 0.002
-Estimated prevalence: 0.1385%
+CI      False
+Estimated prevalence: 0.1360%
 ```
 
 ## Individual case identification

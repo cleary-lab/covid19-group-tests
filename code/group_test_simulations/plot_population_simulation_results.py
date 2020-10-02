@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 mpl.style.use('ggplot')
 import seaborn as sns
 import argparse
+from scipy.sparse import load_npz
 
 def bin_results(R,P0,n=50,y0=None):
 	P = np.copy(P0)
@@ -24,29 +25,14 @@ def bin_results(R,P0,n=50,y0=None):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--viral-load-matrix', help='Path to viral load matrix (individuals x time points)')
-	parser.add_argument('--infection-time', help='Path to time of infection for each individual')
-	parser.add_argument('--onset-time', help='Path to time of symptom onset for each individual')
 	parser.add_argument('--resultspath', help='Path to save summary figure')
 	parser.add_argument('--n-individuals', help='Number of individuals to test (n)',type=int)
 	parser.add_argument('--m-pools', help='Number of pools (m)',type=int)
 	parser.add_argument('--q-split', help='Number of pools (q) into which each sample is split',type=int)
 	args,_ = parser.parse_known_args()
-	f = open(args.viral_load_matrix)
-	timepoints = f.readline()
-	ViralLoad = [[float(l) for l in line.strip().split(',')] for line in f]
-	f.close()
-	ViralLoad = np.array(ViralLoad)
-	x = [np.average(v[v > 0] > 2) for v in ViralLoad.T]
-	f = open(args.infection_time)
-	header = f.readline()
-	InfectionTime = [float(line.strip()) for line in f]
-	f.close()
-	InfectionTime = np.array(InfectionTime)
-	f = open(args.onset_time)
-	header = f.readline()
-	OnsetTime = [float(line.strip()) for line in f]
-	f.close()
-	OnsetTime = np.array(OnsetTime)
+	ViralLoad = load_npz(args.viral_load_matrix)
+	timepoints = np.load(args.viral_load_matrix.replace('viral_loads.npz', 'timepoints.npy'))
+	x = np.array([(ViralLoad[:,i].data > 100).sum()/(ViralLoad[:,i].data > 1).sum() for i in range(ViralLoad.shape[1])])
 	cond = 'n-%d_m-%d_q-%d' % (args.n_individuals,args.m_pools,args.q_split)
 	recall = np.load('%s/Recall_combined.%s.npy' % (args.resultspath,cond))
 	efficiency = np.load('%s/Eff_avg.%s.npy' % (args.resultspath,cond))
@@ -54,6 +40,13 @@ if __name__ == '__main__':
 	Vl = np.load('%s/Vl.%s.npy' % (args.resultspath,cond),allow_pickle=True)[:-10] # exclude last 10d when infected rate > 1%
 	Vi = np.load('%s/Vi.%s.npy' % (args.resultspath,cond),allow_pickle=True)[:-10] # exclude last 10d when infected rate > 1%
 	Vo = np.load('%s/Vo.%s.npy' % (args.resultspath,cond),allow_pickle=True)[:-10] # exclude last 10d when infected rate > 1%
+	### peak times were originally saved without time offset...remove this in the future
+	print('WARNING!!')
+	print('peak times were originally saved without time offset')
+	print('offsetting by range(10,121)')
+	print('remove this in the future')
+	Vo = np.array([t-v for t,v in zip(range(10,121),Vo)])
+	###
 	v1,r1 = bin_results(np.hstack(recall_n), np.hstack(Vl))
 	v2,r2 = bin_results(np.hstack(Vl), np.hstack(Vo),y0=100)
 	v3,r3 = bin_results(np.hstack(recall_n), np.hstack(Vo))
