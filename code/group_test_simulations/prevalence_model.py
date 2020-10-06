@@ -2,6 +2,7 @@ import numpy as np
 import argparse
 import pandas as pd
 from scipy.stats import poisson
+from scipy.sparse import load_npz
 import joblib
 from estimate_prevalence import run_em
 import matplotlib as mpl
@@ -10,17 +11,23 @@ from matplotlib import pyplot as plt
 mpl.style.use('ggplot')
 import seaborn as sns
 
-def sample_pooled_ct_values(viral_load,batch_size,y_cept,Ct_thresh=40,LOD=1,fp_rate=0.01):
-	idx = np.random.choice(viral_load.shape[0],batch_size,replace=False)
-	vl = 10**viral_load[idx] - 1
+def softplus(x):
+	return np.log(1 + np.exp(x))
+
+def sample_pooled_ct_values(viral_load,batch_size,y_cept,LOD=1,fp_rate=0.01,Ct_thresh=40):
+	idx = np.random.choice(viral_load.shape[0],batch_size)
+	vl = viral_load[idx]
+	# poisson sampler has issues with very large numbers, plus don't trust super huge simulated viral loads
+	vl[vl > 1e16] = 1e16
 	sampled_load = poisson.rvs(vl/batch_size)
 	total_sampled_load = sampled_load.sum()
 	if np.random.random() < fp_rate:
 		# 1% of the time (or whatever fp_rate is) add the viral load from 1 positive sample selected at random with load sufficient to cause a false positive
 		nz = np.where(viral_load > np.log10(LOD*batch_size))[0]
 		i = np.random.choice(nz,1)
-		total_sampled_load += poisson.rvs((10**viral_load[i]-1)/batch_size)
+		total_sampled_load += poisson.rvs(min(viral_load[i],1e16)/batch_size)
 	ct_value = y_cept - np.log2(10)*np.log10(total_sampled_load+1e-8)
+	ct_value = softplus(ct_value)
 	if ct_value > Ct_thresh:
 		ct_value = -1 # undetected
 	sampled_freq = np.average(vl > LOD)
@@ -47,18 +54,19 @@ if __name__ == '__main__':
 	for key,value in vars(args).items():
 		print('%s\t%s' % (key,str(value)))
 	N = args.batch_size*args.num_batches
-	ViralLoad_test = np.load(args.viral_load_matrix)
+	ViralLoad_test = load_npz(args.viral_load_matrix)
 	Kernels = [joblib.load('%s.k-%d.pkl' % (args.kde_path,k)) for k in range(1,args.batch_size+1)]
 	Results = []
 	true_frequencies = []
 	for ti in range(args.start_time,args.end_time):
+		viralloads = ViralLoad_test[:,ti].toarray()[:,0]
 		p = []
 		for _ in range(args.num_trials):
 			p_obs = []
 			Y = []
 			y_cept = np.random.randn()*args.ct_intercept_std + args.ct_intercept_mean
 			for b in range(args.num_batches):
-				freq,y = sample_pooled_ct_values(ViralLoad_test[:,ti],args.batch_size,y_cept,fp_rate=args.fp_rate)
+				freq,y = sample_pooled_ct_values(viralloads,args.batch_size,y_cept,fp_rate=args.fp_rate)
 				p_obs.append(freq)
 				Y.append(y)
 			p_obs = np.average(p_obs)
@@ -69,7 +77,7 @@ if __name__ == '__main__':
 			p.append([p_obs,p_est])
 		p = np.array(p)
 		Results.append(p)
-		true_freq = np.average(ViralLoad_test[:,ti] > 0)
+		true_freq = np.average(viralloads > 1)
 		true_frequencies.append(true_freq)
 		print('Time point: %d; Population frequency: %.5f; Sampled frequency: %.5f; Estimated frequency: %.5f' % (ti, true_freq, np.average(p[:,0]), np.average(p[:,1])))
 	Results = np.array(Results) + 1e-5 # we'll say the baseline estimated frequency is 1/100,000
