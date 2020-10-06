@@ -4,60 +4,6 @@ from scipy.sparse import load_npz
 import glob,os
 import argparse
 
-# based on colbourn2006hoc VII.5.46
-def genpairs(n):
-	# Create starter design
-	# starter = [(0,2*n-1)] + [(i,-i % (2*n-1)) for i in range(1,n)]
-	Astart = np.zeros((2*n,n))
-	Astart[[0,2*n-1],0] = 1
-	for i in range(1,n):
-		Astart[[i,-i % (2*n-1)],i] = 1
-	
-	# Add cycled versions
-	A = np.copy(Astart)
-	for r in range(1,2*n-1):
-		Astart = np.vstack((Astart[0,:],Astart[2:,:],Astart[1,:]))
-		A = np.hstack((A,Astart))
-	
-	# checks
-	assert all(np.sum(Astart,axis=1) == 1)  # starter should have no overlaps
-	assert all(np.sum(Astart,axis=0) == 2)  # and two pools per subject
-	assert np.unique(A,axis=1).shape == A.shape  # all columns should be unique
-	
-	return A
-
-def ordered_pairs(m,n):
-	assert m % 2 == 0
-	Abase = genpairs(m//2)
-	return Abase[:,[i % Abase.shape[1] for i in range(n)]]
-
-def grid_balanced(nlist):
-	m = sum(nlist)
-	n = np.product(nlist)
-	q = len(nlist)
-	A = np.zeros((m,n))
-	i = 0
-	for j1 in range(q):
-		B = np.ones((1,1))
-		for j2 in reversed(range(q)):
-			B = np.kron(B,np.identity(nlist[j2]) if j2 == j1 else np.ones((1,nlist[j2])))
-		A[i:i+nlist[j1],:] = B
-		i += nlist[j1]
-	return A
-
-def partition(m,n):
-	assert n/m == int(n/m)
-	s = int(n/m)
-	return np.kron(np.identity(m), np.ones((1,int(n/m))))
-
-# based on R code written by Edgar
-# todo - implement `read=False` case
-def steiner_system(n):
-	A_full = np.loadtxt("steiner_system_4_7_23.txt",skiprows=1,usecols=range(1,254))
-	# select random subset
-	s = np.random.choice(253,n,replace=False)
-	return A_full[:,s]
-
 def random_binary_balanced(m,n,q):
 	A = np.zeros((m,n))
 	for i in range(n):
@@ -139,10 +85,6 @@ if __name__ == '__main__':
 	parser.add_argument('--LOD', help='Limit of detection',type=float,default=100)
 	parser.add_argument('--pool-compositions', help='Path to matrix of pool compositions, otherwise random (default)',default=None)
 	parser.add_argument('--expected-pos-prob', help='1-expected faulty test rate (for setting error correction threshold)',type=float,default=0.95)
-	parser.add_argument('--grid-balanced', help='List of grid dimensions, otherwise random (default)',default=None)
-	parser.add_argument('--steiner', help='Number of individuals to test, otherwise random (default)',default=None)
-	parser.add_argument('--ordered-pairs', help='Use ordered pairs, q-split must be 2, uses n-individuals and m-pools',action='store_true')
-	parser.add_argument('--partition', help='Use a partition, q-split must be 1, uses n-individuals and m-pools',action='store_true')
 	args,_ = parser.parse_known_args()
 	# number of faulty tests to tolerate
 	err_tol = np.round(2*(1-args.expected_pos_prob)*args.q_split) + 1e-7
@@ -172,38 +114,6 @@ if __name__ == '__main__':
 	if args.pool_compositions is not None:
 		print('loading pools from: %s' % args.pool_compositions)
 		A = np.load(args.pool_compositions)
-		m_pools = A.shape[0]
-		n_individuals = A.shape[1]
-		q_split = A.sum(axis=0)[0]
-		assert np.all(A.sum(axis=0) == q_split)
-	elif args.grid_balanced is not None:
-		print('using balanced grid design: %s' % args.grid_balanced)
-		nlist = [int(n) for n in args.grid_balanced.strip().split(',')]
-		A = grid_balanced(nlist)
-		m_pools = sum(nlist)
-		n_individuals = np.product(nlist)
-		q_split = len(nlist)
-	elif args.steiner is not None:
-		print('using steiner design: %s' % args.steiner)
-		n_individuals = int(args.steiner)
-		A = steiner_system(n_individuals)
-		m_pools = A.shape[0]
-		q_split = A.sum(axis=0)[0]
-		assert np.all(A.sum(axis=0) == q_split)
-	elif args.ordered_pairs:
-		print('using ordered pairs design')
-		m_pools = args.m_pools
-		n_individuals = args.n_individuals
-		q_split = args.q_split
-		assert q_split == 2
-		A = ordered_pairs(m_pools,n_individuals)
-	elif args.partition:
-		print('using partition design')
-		m_pools = args.m_pools
-		n_individuals = args.n_individuals
-		q_split = args.q_split
-		assert q_split == 1
-		A = partition(m_pools,n_individuals)
 	else:
 		A = random_binary_balanced(args.m_pools,args.n_individuals,args.q_split)
 	for t in range(args.start_time,args.end_time+1):
