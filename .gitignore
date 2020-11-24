@@ -6,11 +6,11 @@ code/viral_kinetics/sputum_sim_means_for_plot.RData
 code/viral_kinetics/sputum_sim_for_plot.RData
 code/viral_kinetics/sputum_obs_for_plot.RData
 
-
-
 code/viral_kinetics/sims/swab/*
 code/viral_kinetics/sims/swab_switch_SEIR/*
 code/viral_kinetics/sims/sputum/*
 
 *.DS_Store
 *.Rhistory
+
+code/viral_kinetics/chain*
