@@ -1,3 +1,11 @@
+#################################################################
+## SCRIPT 5: SIMULATE MANY SWAB VIRAL LOAD TRAJECTORIES FROM CHANGING SEIR MODEL
+#################################################################
+## 1. Reads in the MCMC fits to the Wolfel et al. SWAB data
+## 2. Simulates a stochastic SEIR model with 2 switch points in R0 (R0 = 2.5 -> 0.8 -> 1.5) with specified population size
+## 3. Simulates viral load trajectories with observation error for each individual, and writes these to disk
+## 4. Plots the distributions from the simulations
+
 library(tidyverse)
 library(data.table)
 library(coda)
@@ -44,14 +52,14 @@ seir_pars_switch <- c("t_switch1"=80,"t_switch2"=150,
                       "R0_1"=2.5,"R0_2"=0.8,"R0_3"=1.5,
                       "gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
 
-nsims <- 100
+nsims <- 50
 
 ## Manage MCMC runs and parallel runs
 n_clusters <- 5
 cl <- parallel::makeCluster(n_clusters, setup_strategy = "sequential")
 registerDoParallel(cl)
 
-res <- foreach(simno=1:nsims,.packages = c("tidyverse","rethinking","odin","data.table")) %dopar% {
+res <- foreach(simno=33:nsims,.packages = c("tidyverse","rethinking","odin","data.table")) %dopar% {
   source("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/functions/odin_funcs.R")
   par_file <- paste0("sims/",run_name,"/used_pars_",run_name,"_",simno,".csv")
   vl_file <- paste0("sims/",run_name,"/seir_viral_loads_",run_name,"_",simno,".csv")

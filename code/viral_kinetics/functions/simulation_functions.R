@@ -158,18 +158,11 @@ simulate_seir_process <- function(n_indivs, pars, times, ver="normal",beta_smoot
 
 simulate_infection_times <- function(n, p_infected, incidence){
   scaled_incidence <- incidence/sum(incidence)
-  are_infected <- numeric(n)
-  infection_times <- numeric(n)
-  for(i in 1:n){
-    infection <- rbinom(1,1, p_infected)
-    are_infected[i] <- infection
-    if(infection == 1){
-      t_inf <- sample(1:length(incidence), 1, prob=scaled_incidence)
-      infection_times[i] <- t_inf
-    } else {
-      infection_times[i] <- -1
-    }
-  }
+  are_infected <- rbinom(n,1,p_infected)
+  t_inf <- sample(1:length(incidence), n, prob=scaled_incidence,replace=TRUE)
+  are_infected[are_infected < 1] <- -1
+  infection_times <- t_inf * are_infected
+  infection_times[infection_times < 0] <- -1
   return(infection_times)
 }
 

@@ -1,3 +1,11 @@
+#################################################################
+## SCRIPT 2: FIT VIRAL KINETICS MODEL TO SPUTUM DATA FROM WOLFEL ET AL. 2020
+#################################################################
+## 1. Reads in the Wolfel et al. SPUTUM data
+## 2. Fits the single-hinge viral kinetics model and plots model fits
+## 3. Simulates many viral kinetics curves from the posterior distribution for the kinetics parameters
+## 4. Generates plots for the viral kinetics trajectories and proportion detectable WRT infection/symptom onset
+
 #devtools::install_github("jameshay218/lazymcmc")
 library(lazymcmc)
 library(tidyverse)
@@ -12,7 +20,7 @@ library(patchwork)
 
 setwd("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/")
 
-#source("functions/model_funcs.R")
+source("functions/model_funcs.R")
 source("functions/model_funcs_multivariate_hinge.R")
 
 n_clusters <- 5
@@ -59,7 +67,8 @@ f_model(parTab$values)
 
 if(rerun_chains){
   res <- foreach(i=seq_along(filenames),.packages = c("lazymcmc","rethinking","extraDistr")) %dopar% {
-    setwd("/Users/james/Google Drive/nCoV/pool_samples/chains_sputum")
+    #setwd("/Users/james/Google Drive/nCoV/pool_samples/chains_sputum")
+    setwd(paste0("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/chains/chains_",run_name))
     startTab <- generate_start_tab(parTab)
     ## Generate random starting conditions for the chain
     ## Note that a list of starting tables is created,
@@ -84,10 +93,10 @@ if(rerun_chains){
   }
 }
 
-chains <- load_mcmc_chains("~/Google Drive/nCoV/pool_samples/chains_sputum/", parTab, TRUE, 10, burnin=1000000,multi=TRUE)
+chains <- load_mcmc_chains(paste0("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/chains/chains_",run_name_chain), parTab, TRUE, 10, burnin=1000000,multi=TRUE)
 gelman.diag(chains[[1]])
 effectiveSize(chains[[1]])
-chains <- load_mcmc_chains("~/Google Drive/nCoV/pool_samples/chains_sputum/", parTab, FALSE, 10, burnin=1000000,multi=TRUE)
+chains <- load_mcmc_chains(paste0("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/chains/chains_",run_name_chain), parTab, FALSE, 10, burnin=1000000,multi=TRUE)
 #plot(chains[[2]])
 chain <- as.data.frame(chains[[2]])
 chain$sampno <- 1:nrow(chain)
@@ -95,7 +104,7 @@ chain$sampno <- 1:nrow(chain)
 ## Simulate posterior draws over 100 days
 ## Note that t0 is going to be time of infection
 ## 1000 posterior draws
-nsamp <- 25
+nsamp <- 1000
 samps <- sample(unique(chain$sampno), nsamp)
 store_all <- NULL
 
@@ -213,7 +222,7 @@ p_sputum <- ggplot(quants) +
   xlab("Days post symptom onset") +
   facet_wrap(~i, ncol=3)
 
-png("sputum_fit.png",width=8,height=6,res=300,units="in")
+png("plots/sputum_fit.png",width=8,height=6,res=300,units="in")
 p_sputum
 dev.off()
 
@@ -269,6 +278,8 @@ for(i in seq_along(samps)){
   obs[obs_below_lod] <- pars_use["lod"]
   obs[obs_unquantifiable] <- runif(length(obs[obs_unquantifiable]), pars_use["lod"], pars_use["limit_quantification"])
   
+  #pred[pred < pars_use["lod"]] <- pars_use["lod"]
+  
   dat_fake$t_shifted <- round(dat_fake$t - pars_use["incu"],1)
   dat_fake$y <- pred
   dat_fake$samp <- i
@@ -311,9 +322,9 @@ prop_onset_true_sputum <- prop_onset_true
 dat_all_onset_sputum <- dat_all_onset
 mean_line_onset_sputum <- mean_line_onset
 
-save(dat_all_onset_sputum,file="sputum_sim_for_plot.RData")
-save(mean_line_onset_sputum,file="sputum_sim_means_for_plot.RData")
-save(prop_onset_true_sputum,file="sputum_obs_for_plot.RData")
+save(dat_all_onset_sputum,file="sims/sputum_sim_for_plot.RData")
+save(mean_line_onset_sputum,file="sims/sputum_sim_means_for_plot.RData")
+save(prop_onset_true_sputum,file="sims/sputum_obs_for_plot.RData")
 
 quant_1 <- prop_onset_true %>% filter(t_shifted > 0) %>% mutate(diff1=abs(0.25-prop)) %>% filter(diff1==min(diff1))
 quant_2 <- prop_onset_true %>% filter(t_shifted > 0) %>% mutate(diff1=abs(0.5-prop)) %>% filter(diff1==min(diff1))
@@ -333,7 +344,6 @@ prop_detect_onset <-  prop_onset_obs %>% ggplot() +
   geom_segment(data=quant_4, aes(x=t_shifted,xend=t_shifted,y=0,yend=0.05),linetype="dotted",col="grey30") +
   
   geom_line(aes(x=t_shifted,y=prop),col="blue",size=1) +
-  geom_line(data=prop_onset_true,aes(x=t_shifted,y=prop),col="red",size=1) +
   scale_y_continuous(limits=c(0,1),breaks=seq(0,1,by=0.1),expand=c(0,0)) +
   scale_x_continuous(limits=c(-15,35), expand=c(0,0),breaks=seq(-15,35,by=5)) +
   xlab("Days since symptom onset") +
@@ -413,13 +423,13 @@ p_draws <- dat_all %>%
 library(patchwork)
 p_comb <- p_draws / prop_detect
 
-save(p_comb,file=paste0("p_",run_name,".RData"))
-save(p_comb_onset,file=paste0("p_onset_",run_name,".RData"))
+save(p_comb,file=paste0("sims/p_",run_name,".RData"))
+save(p_comb_onset,file=paste0("sims/p_onset_",run_name,".RData"))
 
-png(paste0(run_name,"_draws.png"),width=8,height=8,res=300,units="in")
+png(paste0("sims/",run_name,"_draws.png"),width=8,height=8,res=300,units="in")
 p_comb
 dev.off()
-png(paste0(run_name,"_onset_draws.png"),width=8,height=8,res=300,units="in")
+png(paste0("sims/",run_name,"_onset_draws.png"),width=8,height=8,res=300,units="in")
 p_comb_onset
 dev.off()
 
@@ -428,11 +438,11 @@ quant_2
 quant_3
 quant_4
 
-png(paste0("figs/sputum_sims.png"),width=8,height=8,res=300,units="in")
+png(paste0("plots/sputum_sims.png"),width=8,height=8,res=300,units="in")
 p_draws/prop_detect_onset
 dev.off()
 
 
-pdf(paste0("figs/sputum_sims.pdf"),width=8,height=8)
+pdf(paste0("plots/sputum_sims.pdf"),width=8,height=8)
 p_draws/prop_detect_onset
 dev.off()

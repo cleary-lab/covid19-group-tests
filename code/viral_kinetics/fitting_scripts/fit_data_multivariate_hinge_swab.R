@@ -1,4 +1,12 @@
-#devtools::install_github("jameshay218/lazymcmc")
+#################################################################
+## SCRIPT 1: FIT VIRAL KINETICS MODEL TO SWAB DATA FROM WOLFEL ET AL. 2020
+#################################################################
+## 1. Reads in the Wolfel et al. SWAB data
+## 2. Fits the single-hinge viral kinetics model and plots model fits
+## 3. Simulates many viral kinetics curves from the posterior distribution for the kinetics parameters
+## 4. Generates plots for the viral kinetics trajectories and proportion detectable WRT infection/symptom onset
+
+#devtools::install_github("jameshay218/lazymcmc") ## Must install this package to re-fit chains
 library(lazymcmc)
 library(tidyverse)
 library(data.table)
@@ -10,10 +18,13 @@ library(rethinking)
 library(extraDistr)
 library(patchwork)
 
+## Choose working directory
 setwd("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/")
 
+## Load model functions
 source("functions/model_funcs.R")
 source("functions/model_funcs_multivariate_hinge.R")
+
 
 run_name <- "swab"
 run_name_chain <- "swab"
@@ -21,16 +32,13 @@ n_clusters <- 5
 cl <- makeCluster(n_clusters)
 registerDoParallel(cl)
 
+## Rerun MCMC chains or load existing?
 rerun_chains <- FALSE
 shift_twane <- 0
-
-## Choose working directory
-#setwd("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/")
-
 filenames <- paste0("drosten_data_", 1:n_clusters)
-
 n_indiv <- 9
 
+## Parameter control table
 parTab <- read.csv("pars/partab_multivariate_hinge.csv",stringsAsFactors=FALSE)
 ## Read in extracted Wolfel data
 viral_loads_dat <- read.csv("data/drosten_data.csv")
@@ -44,7 +52,7 @@ mcmcPars1 <- c("iterations"=1000000,"popt"=0.44,"opt_freq"=1000,
 mcmcPars2 <- c("iterations"=4000000,"popt"=0.234,"opt_freq"=1000,
                "thin"=100,"adaptive_period"=1000000,"save_block"=1000)
 
-
+## Prior on incubation periods
 prior_func <- function(pars){
   names(pars) <- parTab$names
   to_test <- pars[which(names(pars) == "incu")]
@@ -61,7 +69,8 @@ f_model(parTab$values)
 
 if(rerun_chains){
   res <- foreach(i=seq_along(filenames),.packages = c("lazymcmc","rethinking","extraDistr")) %dopar% {
-    setwd(paste0("/Users/james/Google Drive/nCoV/pool_samples/chains_",run_name))
+    #setwd(paste0("/Users/james/Google Drive/nCoV/pool_samples/chains_",run_name))
+    setwd(paste0("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/chains/chains_",run_name))
     startTab <- generate_start_tab(parTab)
     ## Generate random starting conditions for the chain
     ## Note that a list of starting tables is created,
@@ -85,12 +94,14 @@ if(rerun_chains){
                        OPT_TUNING=0.2, mvrPars=mvrPars)
   }
 }
-
-chains <- load_mcmc_chains(paste0("~/Google Drive/nCoV/pool_samples/chains_",run_name_chain), 
+## Read in pre-computed MCMC chains for diagnostics
+chains <- load_mcmc_chains(paste0("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/chains/chains_",run_name_chain), 
                            parTab, TRUE, 10, burnin=1000000,multi=TRUE)
 gelman.diag(chains[[1]])
 effectiveSize(chains[[1]])
-chains <- load_mcmc_chains(paste0("~/Google Drive/nCoV/pool_samples/chains_",run_name_chain), 
+
+## Read in pre-computed MCMC chains for analyses
+chains <- load_mcmc_chains(paste0("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/chains/chains_",run_name_chain), 
                            parTab, FALSE, 10, burnin=1000000,multi=TRUE)
 #plot(chains[[2]])
 chain <- as.data.frame(chains[[2]])
@@ -99,7 +110,7 @@ chain$sampno <- 1:nrow(chain)
 ## Simulate posterior draws over 100 days
 ## Note that t0 is going to be time of infection
 ## 1000 posterior draws
-nsamp <- 25
+nsamp <- 1000
 samps <- sample(unique(chain$sampno), nsamp)
 store_all <- NULL
 
@@ -190,6 +201,7 @@ quants_obs <- store_all %>% group_by(i, t) %>%
 rect_dat <- data.frame(x1=-30,x2=0,y1=-5,y2=13)
 rect_dat2 <- data.frame(x1=-30,x2=50,y1=-5,y2=0)
 
+## Look at model fits
 p_swab <- ggplot(quants) +
   geom_rect(data=rect_dat,aes(ymin=y1,ymax=y2,xmin=x1,xmax=x2),fill="grey70",alpha=0.5) +
   geom_rect(data=rect_dat2,aes(ymin=y1,ymax=y2,xmin=x1,xmax=x2),fill="grey70",alpha=0.5) +
@@ -220,9 +232,9 @@ p_swab <- ggplot(quants) +
   xlab("Days post symptom onset") +
   facet_wrap(~i, ncol=3)
 
-#png(paste0(run_name,"_fit.png"),width=8,height=6,res=300,units="in")
+png(paste0("plots/",run_name,"_fit.png"),width=8,height=6,res=300,units="in")
 p_swab
-#dev.off()
+dev.off()
 
 
 ###################################
@@ -277,6 +289,7 @@ for(i in seq_along(samps)){
   obs[obs_unquantifiable] <- runif(length(obs[obs_unquantifiable]), pars_use["lod"], pars_use["limit_quantification"])
   
   dat_fake$t_shifted <- round(dat_fake$t - pars_use["incu"],1)
+  #pred[pred < pars_use["lod"]] <- pars_use["lod"]
   dat_fake$y <- pred
   dat_fake$samp <- i
   dat_fake$obs <- obs
@@ -319,9 +332,9 @@ prop_onset_true_swab <- prop_onset_true
 dat_all_onset_swab <- dat_all_onset
 mean_line_onset_swab <- mean_line_onset
 
-save(dat_all_onset_swab,file="swab_sim_for_plot.RData")
-save(mean_line_onset_swab,file="swab_sim_means_for_plot.RData")
-save(prop_onset_true_swab,file="swab_obs_for_plot.RData")
+save(dat_all_onset_swab,file="sims/swab_sim_for_plot.RData")
+save(mean_line_onset_swab,file="sims/swab_sim_means_for_plot.RData")
+save(prop_onset_true_swab,file="sims/swab_obs_for_plot.RData")
 
 quant_1 <- prop_onset_true %>% filter(t_shifted > 0) %>% mutate(diff1=abs(0.25-prop)) %>% filter(diff1==min(diff1))
 quant_2 <- prop_onset_true %>% filter(t_shifted > 0) %>% mutate(diff1=abs(0.5-prop)) %>% filter(diff1==min(diff1))
@@ -371,7 +384,7 @@ p_draws_onset <- dat_all_onset %>%
   ylab("log10 RNA copies / swab") +
   labs(tag="A")
 
-p_comb_onset <- p_draws_onset/prop_detect_onset
+p_comb_onset <- (p_draws_onset + prop_detect_onset) + plot_layout(ncol=1)
 p_comb_onset
 
 ## By date of infection
@@ -423,28 +436,28 @@ p_draws <- dat_all %>%
   labs(tag="A")
 
 library(patchwork)
-p_comb <- p_draws / prop_detect
+p_comb <- (p_draws + prop_detect) + plot_layout(ncol=1)
 
-save(p_comb,file=paste0("p_",run_name,".RData"))
-save(p_comb_onset,file=paste0("p_onset_",run_name,".RData"))
+save(p_comb,file=paste0("sims/p_",run_name,".RData"))
+save(p_comb_onset,file=paste0("sims/p_onset_",run_name,".RData"))
 
-#png(paste0(run_name,"_draws.png"),width=8,height=8,res=300,units="in")
+png(paste0("plots/",run_name,"_draws.png"),width=8,height=8,res=300,units="in")
 p_comb
-#dev.off()
-#png(paste0(run_name,"_onset_draws.png"),width=8,height=8,res=300,units="in")
+dev.off()
+png(paste0("plots/",run_name,"_onset_draws.png"),width=8,height=8,res=300,units="in")
 p_comb_onset
-#dev.off()
+dev.off()
 
 quant_1
 quant_2
 quant_3
 quant_4
 
-png(paste0("figs/swab_sims.png"),width=8,height=8,res=300,units="in")
+png(paste0("plots/swab_sims.png"),width=8,height=8,res=300,units="in")
 p_draws/prop_detect_onset
 dev.off()
 
 
-pdf(paste0("figs/swab_sims.pdf"),width=8,height=8)
+pdf(paste0("plots/swab_sims.pdf"),width=8,height=8)
 p_draws/prop_detect_onset
 dev.off()
