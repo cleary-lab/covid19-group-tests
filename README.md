@@ -44,7 +44,7 @@ Code for this part are in the [code/viral_kinetics/](https://github.com/cleary-l
   - `pars`: csv files containing data frames that control the MCMC framework.
   - `plots`: folder containing all intermediate plots, paper figures (for the part A related analyses) and *R scripts for figure generation*.
   - `sim_scripts`: scripts used to simulate the SEIR model and viral load trajectories used in part B.
-  - `sims`: outputs from running `sim_scripts` scripts.
+  - `sims`: outputs from running `sim_scripts` scripts. *NOTE* these outputs are not included in the git repo, as they are huge files (tens of gigabytes). They should be reproduced if needed, see below.
   - `test_scripts`: redundant scripts used during the development stage.
 
 ### 3. Data
