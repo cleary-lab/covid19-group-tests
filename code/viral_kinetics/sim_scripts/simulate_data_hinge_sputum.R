@@ -13,6 +13,7 @@ library(Matrix)
 setwd("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/")
 source("functions/simulation_functions.R")
 source("functions/model_funcs.R")
+source("functions/odin_funcs.R")
 source("functions/model_funcs_multivariate_hinge.R")
 
 set.seed(0)
@@ -43,18 +44,17 @@ chain$wane_mean <- chain$wane_mean + shift_twane
 
 ## Simulate the epidemic process
 seir_pars <- c("R0"=2.5,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
-epidemic_process <- simulate_seir_process(population_n,seir_pars,times)
+epidemic_process <- simulate_seir_process(population_n,seir_pars,times,ver="normal",beta_smooth=0.5,stochastic = TRUE)
 epidemic_process$plot
-
+epidemic_process$incidence_plot
 ## Simulate infection times
 infection_times <- simulate_infection_times(n, epidemic_process$overall_prob_infection, 
                                             epidemic_process$incidence)
-
+infection_times_dat <- tibble(i=seq_along(infection_times), inf_time=infection_times)
 ## Simulate viral loads for the sample population
 simulated_data <- simulate_viral_loads_hinge(infection_times, times, chain, parTab,save_during=TRUE,
                                              save_block=100000,vl_file=vl_file,obs_file=obs_file,par_file=par_file,
-                                             add_noise=FALSE)
-
+                                             add_noise=TRUE,max_vl=11,simno=1)
 viral_loads <- simulated_data$viral_loads
 viral_loads_tmp <- viral_loads[1:1000,]
 viral_loads_melted <- reshape2::melt(viral_loads_tmp)
@@ -119,4 +119,11 @@ dev.off()
 pdf(paste0("sims/",run_name,"_onset_sim.pdf"),height=6,width=8)
 p_comb_onset | pC
 dev.off()
+
+
+p1 <- epidemic_process$incidence_plot + geom_vline(xintercept=plot_t,linetype="dashed")
+
+
+ggsave( paste0("sims/",run_name,"_observed_trajectories.png"),plot=p_obs_traj,height=5,width=6,dpi=300,units="in")
+ggsave(paste0("sims/",run_name,"_inc_plot.png"),plot=p1,height=4,width=7,dpi=300,units="in")
 

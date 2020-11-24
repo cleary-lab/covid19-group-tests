@@ -410,7 +410,8 @@ p_draws <- dat_all %>%
   ylab("log10 RNA copies / ml") +
   labs(tag="A")
 
-p_comb <- p_draws/prop_detect
+library(patchwork)
+p_comb <- p_draws / prop_detect
 
 save(p_comb,file=paste0("p_",run_name,".RData"))
 save(p_comb_onset,file=paste0("p_onset_",run_name,".RData"))

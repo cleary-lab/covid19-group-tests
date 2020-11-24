@@ -190,7 +190,7 @@ quants_obs <- store_all %>% group_by(i, t) %>%
 rect_dat <- data.frame(x1=-30,x2=0,y1=-5,y2=13)
 rect_dat2 <- data.frame(x1=-30,x2=50,y1=-5,y2=0)
 
-p_sputum <- ggplot(quants) +
+p_swab <- ggplot(quants) +
   geom_rect(data=rect_dat,aes(ymin=y1,ymax=y2,xmin=x1,xmax=x2),fill="grey70",alpha=0.5) +
   geom_rect(data=rect_dat2,aes(ymin=y1,ymax=y2,xmin=x1,xmax=x2),fill="grey70",alpha=0.5) +
   geom_ribbon(data=quants_obs[quants_obs$t >= 0,], aes(x=t,ymin=lower,ymax=upper),fill="#0072B2",alpha=0.4) +
@@ -221,7 +221,7 @@ p_sputum <- ggplot(quants) +
   facet_wrap(~i, ncol=3)
 
 #png(paste0(run_name,"_fit.png"),width=8,height=6,res=300,units="in")
-p_sputum
+p_swab
 #dev.off()
 
 
@@ -302,8 +302,6 @@ mean_line_onset <- dat_all_onset %>% group_by(t_shifted) %>%
   summarize(median_line=median(y),
             mean_line=mean(y),
             .groups="keep")
-
-
 
 prop_onset_true <- dat_all_onset %>% 
   #mutate(detectable = y > pars_use["lod"]) %>%
@@ -424,10 +422,11 @@ p_draws <- dat_all %>%
   ylab("log10 RNA copies / swab") +
   labs(tag="A")
 
-p_comb <- p_draws/prop_detect
+library(patchwork)
+p_comb <- p_draws / prop_detect
 
-#save(p_comb,file=paste0("p_",run_name,".RData"))
-#save(p_comb_onset,file=paste0("p_onset_",run_name,".RData"))
+save(p_comb,file=paste0("p_",run_name,".RData"))
+save(p_comb_onset,file=paste0("p_onset_",run_name,".RData"))
 
 #png(paste0(run_name,"_draws.png"),width=8,height=8,res=300,units="in")
 p_comb

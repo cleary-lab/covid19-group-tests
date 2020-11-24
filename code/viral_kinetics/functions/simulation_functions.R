@@ -34,42 +34,125 @@ seir_ode <- function(t,Y,par){
   return(list(dYdt))
 }
 
-simulate_seir_process <- function(n_indivs, pars, times){
-  # Set parameter values
-  R0 <- pars["R0"]
-  sigma<-pars["sigma"];
-  gamma<-pars["gamma"];
-  beta <- R0*gamma
-  N <- n_indivs
-  I0 <- pars["I0"]
-  recovered0 <- pars["recovered0"]
+seir_ode_switch <- function(t,Y,par){
+  S<-Y[1]
+  E<-Y[2]
+  I<-Y[3]
+  R<-Y[4]
+  inc<-Y[5]
+  N <- sum(Y[1:4])
   
-  init <- c(N-I0-recovered0,0,I0,0,recovered0)
-  t<-times
-  par<-c(beta,sigma,gamma)
-  # Solve system using lsoda
-  sol<-lsoda(init,t,seir_ode,par)
-  # Plot solution
-  sol <- as.data.frame(sol)
-  colnames(sol) <- c("time","S","E","I","R","cumulative_incidence")
-  incidence <- diff(c(0,sol$cumulative_incidence/N))
-  prevalence <- (sol$E + sol$I)/N
-  sol <- reshape2::melt(sol, id.vars="time")
-  sol$value <- sol$value/N
+  t_switch1 <- par[1]
+  t_switch2 <- par[2]
   
-  p <- ggplot(sol) + 
+  if(t < t_switch1){
+    beta <- par[3]
+  } else if(t > t_switch1 & t < t_switch2) {
+    beta <- par[4]
+  } else {
+    beta <- par[5]
+  }
+  
+  sigma<-par[6]
+  gamma<-par[7]
+  
+  dYdt<-vector(length=4)
+  dYdt[1]= -beta*I*S/N 
+  dYdt[2]= beta*I*S/N - sigma*E
+  dYdt[3]= sigma*E - gamma*I
+  dYdt[4]= gamma*I
+  dYdt[5] = beta*I*S/N
+  
+  return(list(dYdt))
+}
+
+
+simulate_seir_process <- function(n_indivs, pars, times, ver="normal",beta_smooth=0.8,stochastic=TRUE){
+  ####################################################
+  ## Stochastic model
+  ####################################################
+  if(stochastic){
+    if(ver == "switch"){
+      gamma1 <- pars["gamma"]
+      sigma1 <- pars["sigma"]
+      beta1 <- pars["R0_1"]*gamma1
+      beta2 <- pars["R0_2"]*gamma1
+      beta3 <- pars["R0_3"]*gamma1
+      I0 <- pars["I0"]
+      N <- n_indivs
+      ## Odin stochastic SEIR model generator
+      betas <- rep(beta3, length(times))
+      betas[which(times < pars["t_switch2"])] <- beta2
+      betas[which(times < pars["t_switch1"])] <- beta1
+      betas <- smooth.spline(betas,spar=beta_smooth)$y
+      seir <- seir_generator_interpolate(betat=times,betay=betas,sigma=sigma1,gamma=gamma1,S_ini=n_indivs-I0,I_ini=I0)
+      
+    } else {
+      gamma1 <- pars["gamma"]
+      sigma1 <- pars["sigma"]
+      beta1 <- pars["R0"]*gamma1
+      I0 <- pars["I0"]
+      N <- n_indivs
+      ## Odin stochastic SEIR model generator
+      seir <- seir_generator(beta=beta1,sigma=sigma1,gamma=gamma1,S_ini=n_indivs-I0,I_ini=I0)
+    }
+    ## Solve model
+    res <- seir$run(times)
+    ## Make sure we get a simulation with an outbreak - keep trying until it takes off
+    while(max(res[,"I"]) <= I0) res <- seir$run(times)
+    
+    ## Get raw incidence and overall probability of infection
+    incidence <- res[,"inc"]/n_indivs
+    #overall_prob <- max(res[,"R"])/n_indivs
+    res <- as.data.frame(res)
+    colnames(res) <- c("time","S","E","I","R","inc")
+  } else {
+    # Set parameter values
+    sigma<-pars["sigma"];
+    gamma<-pars["gamma"];
+    N <- n_indivs
+    I0 <- pars["I0"]
+    recovered0 <- pars["recovered0"]
+    
+    init <- c(N-I0-recovered0,0,I0,0,recovered0)
+    t<-times
+    
+    if(ver == "switch"){
+      par <- c(pars["t_switch1"],pars["t_switch2"],
+               pars["R0_1"]*(pars["gamma"]),pars["R0_2"]*(pars["gamma"]),pars["R0_3"]*(pars["gamma"]),
+               pars["sigma"],pars["gamma"]
+      )
+      sol<-lsoda(init,t,seir_ode_switch,par)
+    } else {
+      R0 <- pars["R0"]
+      beta <- R0*gamma
+      par<-c(beta,sigma,gamma)
+      # Solve system using lsoda
+      sol<-lsoda(init,t,seir_ode,par)
+    }
+    # Plot solution
+    res <- as.data.frame(sol)
+    colnames(res) <- c("time","S","E","I","R","cumulative_incidence")
+    incidence <- diff(c(0,sol$cumulative_incidence/N))
+  }
+  
+  prevalence <- (res$E + res$I)/N
+  res <- reshape2::melt(res, id.vars="time")
+  res$value <- res$value/N
+  
+  p <- ggplot(res) + 
     geom_line(aes(x=time,y=value,col=variable)) + 
     ylab("Per capita") + 
     xlab("Date") +
     theme_bw()
-  p_inc <- ggplot(data.frame(x=t,y=incidence,y1=prevalence)) + geom_line(aes(x=x,y=y),col="red") +
+  p_inc <- ggplot(data.frame(x=times,y=incidence,y1=prevalence)) + geom_line(aes(x=x,y=y),col="red") +
     geom_line(aes(x=x,y=y1),col="blue") +
     ylab("Per capita incidence (red) and prevalence (blue)") + 
     xlab("Date") +
     theme_bw()
   
   return(list(plot=p, incidence_plot=p_inc, incidence=incidence, 
-              seir_outputs=sol,prevalence=prevalence,
+              seir_outputs=res,prevalence=prevalence,
               overall_prob_infection=sum(incidence)))  
 }
 
@@ -108,7 +191,7 @@ simulate_symptom_onsets <- function(infection_times, incubation_period_par1=1.62
 simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parTab,
                                        save_during=FALSE, save_block=10000,
                                        vl_file=NULL, obs_file=NULL, par_file=NULL,
-                                       add_noise=TRUE){
+                                       add_noise=TRUE,max_vl=12,simno=NA){
   chain <- as.matrix(chain_input)
   
   ## Re-sample rows
@@ -135,6 +218,18 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
   
   index <- 1
   block_no <- 1
+  
+  ## Make model functions for each possible sampled individual
+  model_funcs <- NULL
+  for(i in 1:9){
+    dat_fake$i <- i
+    model_funcs[[i]] <- create_func_indivs_multivariate_hinge(parTab[parTab$indiv %in% c(0,i),], 
+                                                     dat_fake,ver="model",PRIOR_FUNC=prior_func,for_plot=FALSE)
+  }
+  
+  ## Some pre-computation before the big loop
+  R <- diag(2)
+  
   ## For each infection
   for(i in seq_along(infection_times)){
     ## If individual was ever infected
@@ -153,7 +248,6 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
       mus <- c(pars["viral_peak_mean"], pars["wane_mean"])
       sds <- c(pars["viral_peak_sd"], pars["wane_sd"])
       
-      R <- diag(2)
       R[upper.tri(R)] <- R[lower.tri(R)]<- rhos
       tmp <- rmvnorm2(1, mus, sds, R)
       ## Keep resampling until non-negative waning duration
@@ -181,9 +275,8 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
       pars_use["incu"] <- pars_use["incu"] + infection_times[i]
       
       ## Create model function and solve
-      f_model <- create_func_indivs_multivariate_hinge(parTab[parTab$indiv %in% c(0,choose_indiv),], 
-                                                       dat_fake,ver="model",PRIOR_FUNC=prior_func,for_plot=FALSE)
-      pred <- f_model(pars_use)
+      pred <- model_funcs[[choose_indiv]](pars_use)
+      
       if(add_noise){
         ## Add observation error
         obs <- pred + rnorm(length(pred), 0, pars_use["sd"])
@@ -207,6 +300,10 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
     if(i %% save_block == 0){
       print(i)
       if(save_during){
+        ## Truncate viral loads and observations to be at most max_vl
+        viral_loads <- pmin(viral_loads, max_vl)
+        obs_dat <- pmin(obs_dat, max_vl)
+        
         index <- 1
         
         ## Save viral loads made so far
@@ -215,19 +312,29 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
         vl_to_save$j <- vl_to_save$j - 1
         #vl_to_save$block <- block_no
         vl_to_save$i <- (block_no-1)*save_block + vl_to_save$i
-        colnames(vl_to_save) <- c("i","t","vl")
+        if(!is.na(simno)){
+          vl_to_save$simno <- simno
+          colnames(vl_to_save) <- c("i","t","vl","simno")
+        } else {
+          colnames(vl_to_save) <- c("i","t","vl")
+        }
         
         data.table::fwrite(vl_to_save, file = vl_file,sep = ",",col.names = save_colnames, 
                            row.names = FALSE, append = append)
         
         ## Save observations made so far
         if(add_noise){
-          obs_to_save <- Matrix::Matrix(obs_dat, sparse = append)
+          obs_to_save <- Matrix::Matrix(obs_dat, sparse = TRUE)
           obs_to_save <- as.data.frame(Matrix::summary(obs_to_save))
           obs_to_save$j <- obs_to_save$j - 1
           #obs_to_save$block <- block_no
           obs_to_save$i <- (block_no-1)*save_block + obs_to_save$i
-          colnames(obs_to_save) <- c("i","t","vl")
+          if(!is.na(simno)){
+            obs_to_save$simno <- simno
+            colnames(obs_to_save) <- c("i","t","vl","simno")
+          } else {
+            colnames(obs_to_save) <- c("i","t","vl")
+          }
           data.table::fwrite(obs_to_save, file = obs_file,sep = ",",col.names = save_colnames, 
                              row.names = FALSE, append = append)
         }
@@ -251,6 +358,8 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
       }
     }
   }
+  viral_loads <- pmin(viral_loads, max_vl)
+  obs_dat <- pmin(obs_dat, max_vl)
   return(list(viral_loads=viral_loads,obs=obs_dat, pars=used_pars))
 }
 

@@ -10,6 +10,7 @@ library(patchwork)
 library(lazymcmc)
 library(deSolve)
 library(Matrix)
+library(odin)
 setwd("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/")
 source("functions/simulation_functions.R")
 source("functions/model_funcs.R")
@@ -17,21 +18,17 @@ source("functions/odin_funcs.R")
 source("functions/model_funcs_multivariate_hinge.R")
 
 set.seed(0)
-## Entire popuation size (this is MA in 2018 from US Census Bureau)
+
+## Entire population size for simulation - large enough to generate enough viral loads to overcome stochastic effects
 population_n <- 12500000
 
 ## Sample size
 n <- 12500000
-n <- 100000
-
 ## Duration of epidemic in days
-times <- 0:365
+times <- 0:200
 
-run_name <- "swab"
+run_name <- "swab_switch_SEIR"
 shift_twane <- 0
-par_file <- paste0("sims/used_pars_",run_name,".csv")
-vl_file <- paste0("sims/seir_viral_loads_",run_name,".csv")
-obs_file <- paste0("sims/seir_obs_viral_loads_",run_name,".csv")
 
 ## Viral kinetics pars
 ## Change wd to local path
@@ -43,20 +40,43 @@ chain$sampno <- 1:nrow(chain)
 chain$wane_mean <- chain$wane_mean + shift_twane
 
 ## Simulate the epidemic process
-seir_pars <- c("R0"=2.5,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
+seir_pars_switch <- c("t_switch1"=80,"t_switch2"=150,
+                      "R0_1"=2.5,"R0_2"=0.8,"R0_3"=1.5,
+                      "gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
 
-epidemic_process <- simulate_seir_process(population_n,seir_pars,times,ver="normal",beta_smooth=0.5,stochastic = TRUE)
-epidemic_process$plot
-epidemic_process$incidence_plot
-## Simulate infection times
-infection_times <- simulate_infection_times(n, epidemic_process$overall_prob_infection, 
-                                            epidemic_process$incidence)
-infection_times_dat <- tibble(i=seq_along(infection_times), inf_time=infection_times)
-## Simulate viral loads for the sample population
-simulated_data <- simulate_viral_loads_hinge(infection_times, times, chain, parTab,save_during=TRUE,
-                                             save_block=100000,vl_file=vl_file,obs_file=obs_file,par_file=par_file,
-                                             add_noise=TRUE,max_vl=11,simno=1)
+nsims <- 100
 
+## Manage MCMC runs and parallel runs
+n_clusters <- 5
+cl <- parallel::makeCluster(n_clusters, setup_strategy = "sequential")
+registerDoParallel(cl)
+
+res <- foreach(simno=1:nsims,.packages = c("tidyverse","rethinking","odin","data.table")) %dopar% {
+  source("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/functions/odin_funcs.R")
+  par_file <- paste0("sims/",run_name,"/used_pars_",run_name,"_",simno,".csv")
+  vl_file <- paste0("sims/",run_name,"/seir_viral_loads_",run_name,"_",simno,".csv")
+  obs_file <- paste0("sims/",run_name,"/seir_obs_viral_loads_",run_name,"_",simno,".csv")
+  
+  #epidemic_process <- simulate_seir_process(population_n,seir_pars,times)
+  epidemic_process <- simulate_seir_process(population_n,seir_pars_switch,times,ver="switch",beta_smooth=0.5,stochastic = TRUE)
+  
+  ## Simulate infection times
+  infection_times <- simulate_infection_times(n, epidemic_process$overall_prob_infection, 
+                                              epidemic_process$incidence)
+  infection_times_dat <- tibble(i=seq_along(infection_times), inf_time=infection_times)
+  ## Simulate viral loads for the sample population
+  
+  ## <0.2% of simulated viral loads are 11 or higher
+  simulated_data <- simulate_viral_loads_hinge(infection_times, times, chain, parTab,save_during=TRUE,
+                                               save_block=100000,vl_file=vl_file,obs_file=obs_file,par_file=par_file,
+                                               add_noise=TRUE,max_vl=11,simno=simno)
+  list(simulated_data, infection_times_dat, epidemic_process)
+ 
+}
+
+simulated_data <- res[[1]][[1]]
+infection_times_dat <- res[[1]][[2]]
+epidemic_process <- res[[1]][[3]]
 viral_loads <- simulated_data$viral_loads
 viral_loads_tmp <- viral_loads[1:100,]
 viral_loads_melted <- reshape2::melt(viral_loads_tmp)
@@ -80,12 +100,14 @@ p_obs_traj <- ggplot(obs_vl_melted %>% mutate(t = t-inf_time) %>% filter(t >0 & 
   geom_line(aes(x=t,y=obs,group=i),size=0.25) + 
   theme_bw() +
   ylab("log10 viral load") + xlab("Time")
+p_obs_traj
 
 p_obs <- ggplot(obs_vl_melted) + 
   geom_tile(aes(x=t,y=i,fill=obs)) + 
   scale_fill_viridis_c() +
   theme_bw() +
   ylab("Individual") + xlab("Time")
+
 pdf(paste0("sims/",run_name,"_observed_vls.pdf"),height=5,width=6)
 p_obs
 dev.off()
@@ -102,19 +124,17 @@ p_vl <- ggplot(viral_loads_melted) +
 obs_vl_melted <- reshape2::melt(simulated_data$obs[seq(1, min(1000000, nrow(simulated_data$obs)),by=1),])
 colnames(obs_vl_melted) <- c("i","t","obs")
 obs_vl_melted <- as_tibble(obs_vl_melted)
-obs_vl_melted <- obs_vl_melted %>% mutate(ct = 40 - log2(10)*obs,
-                                          ct = pmax(0, ct),
-                                          t = t - 1)
+obs_vl_melted <- obs_vl_melted %>% mutate(ct = 40 - log2(10)*obs,ct = pmax(0, ct),t = t - 1)
 
-plot_t <- c(80, 110, 220)
+plot_t <- c(75, 125, 175)
 obs_vl_melted_tmp <- obs_vl_melted %>% 
   filter(t %in% plot_t) %>%
   filter(ct < 40)
 
-t_label <- c("80"="Early","110"="Peak","220"="Late")
+t_label <- c("75"="Early","125"="First decline","175"="Second rise")
 obs_vl_melted_tmp$t <- as.character(obs_vl_melted_tmp$t)
 obs_vl_melted_tmp$t <- t_label[obs_vl_melted_tmp$t]
-obs_vl_melted_tmp$t <- factor(obs_vl_melted_tmp$t, levels=c("Early","Peak","Late"))
+obs_vl_melted_tmp$t <- factor(obs_vl_melted_tmp$t, levels=c("Early","First decline","Second rise"))
 pC <- obs_vl_melted_tmp %>% ggplot() +
   geom_histogram(aes(x=ct),binwidth=1,fill="grey70",col="black") +
   facet_wrap(~t,scales="free_y",ncol=1) +
@@ -126,21 +146,14 @@ pC <- obs_vl_melted_tmp %>% ggplot() +
   theme(plot.tag=element_text(vjust=-3)) +
   labs(tag="C")
 
-load(paste0("figs/p_",run_name,".RData"))
-load(paste0("figs/p_onset_",run_name,".RData"))
-
-pdf(paste0("sims/",run_name,"_sim.pdf"),height=6,width=8)
-p_comb | pC
+pdf(paste0("sims/",run_name,"_sim.pdf"),height=6,width=4)
+pC
 dev.off()
 
-pdf(paste0("sims/",run_name,"_onset_sim.pdf"),height=6,width=8)
-p_comb_onset | pC
-dev.off()
-
-
-p1 <- epidemic_process$incidence_plot + geom_vline(xintercept=plot_t,linetype="dashed")
+p1 <- epidemic_process$incidence_plot + geom_vline(xintercept=c(75,125,175),linetype="dashed")
 
 
 ggsave( paste0("sims/",run_name,"_observed_trajectories.png"),plot=p_obs_traj,height=5,width=6,dpi=300,units="in")
 ggsave(paste0("sims/",run_name,"_inc_plot.png"),plot=p1,height=4,width=7,dpi=300,units="in")
+
 
