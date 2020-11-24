@@ -37,7 +37,7 @@ There is also a dependency on a custom R package for MCMC sampling, `lazymcmc` a
 ### 2. Git repo structure
 ------------
 Code for this part are in the [code/viral_kinetics/](https://github.com/cleary-lab/covid19-group-tests/tree/master/code/viral_kinetics/) folder. The repo structure is as follows:
-  - `chains`: this folder contains the MCMC chains from fitting the viral kinetics model to swab and sputum data. Chains are stored in separate folders for these two scenarios.
+  - `chains`: this folder contains the MCMC chains from fitting the viral kinetics model to swab and sputum data. Chains are stored in separate folders for these two scenarios. *NOTE* the MCMC chains are not included in the git repo due to size restrictions. They should be reproduced if needed, see below.
   - `data`: folder containing the digitized viral load data (see below) and intermediate files.
   - `fitting_scripts`: scripts used for fitting the viral kinetics model using MCMC and assessing convergence.
   - `functions`: all R files with functions used in the analyses.
