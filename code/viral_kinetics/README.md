@@ -36,7 +36,7 @@ Code for this part are in the [code/viral_kinetics/](https://github.com/cleary-l
 
 ### 3. Data
 ------------
-Most data for this part are simulated. However, for model fitting, we used swab and sputum data from [Wölfel, R., Corman, V.M., Guggemos, W. et al. Virological assessment of hospitalized patients with COVID-2019. Nature 581, 465–469 (2020). https://doi-org.ezp-prod1.hul.harvard.edu/10.1038/s41586-020-2196-x](https://www-nature-com.ezp-prod1.hul.harvard.edu/articles/s41586-020-2196-x). Data were extracted using a [web plot digitizer](https://automeris.io/WebPlotDigitizer/). All extracted data are provided in [code/viral_kinetics/data](https://github.com/cleary-lab/covid19-group-tests/tree/master/code/viral_kinetics/data).
+Most data for this part are simulated. However, for model fitting, we used swab and sputum data from [Wölfel, R., Corman, V.M., Guggemos, W. et al. Virological assessment of hospitalized patients with COVID-2019. Nature 581, 465–469 (2020).](https://www.nature.com/articles/s41586-020-2196-x). Data were extracted using a [web plot digitizer](https://automeris.io/WebPlotDigitizer/). All extracted data are provided in [code/viral_kinetics/data](https://github.com/cleary-lab/covid19-group-tests/tree/master/code/viral_kinetics/data).
 
 ### 4. Scripts
 ------------
