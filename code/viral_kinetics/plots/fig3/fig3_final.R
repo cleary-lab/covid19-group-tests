@@ -55,7 +55,7 @@ fig3 <- dat1 %>%
         plot.tag = element_text(size=10,face="bold")) +
   labs(tag="A")
 
-ggsave("fig3_scatter.png",fig3,height=2.5,width=7,units="in")
+# ggsave("fig3/fig3_scatter.png",fig3,height=2.5,width=7,units="in")
 
 
 dat2 <- dat
@@ -176,8 +176,8 @@ inaccurate_levels <- dat5 %>% filter(as.numeric(group) < 1/N) %>% select(label, 
 
 dodge_x <- 0.2
 dat5 <- dat5 %>% mutate(x_dodged=as.numeric(name) + runif(n(), -dodge_x,dodge_x))
-use_samps <-dat5 %>% dplyr::select(label, group,i) %>% distinct() %>% group_by(label, group) %>% sample_frac(0.25)
-dat5 <- dat5 %>% filter(i %in% use_samps$i)
+dat5 %>% dplyr::select(label, group, prev_group,i) %>% distinct() %>% group_by(label, group, prev_group) %>% sample_frac(0.25) %>% pull(i) -> samp_i
+dat5 <- dat5 %>% filter(i %in% samp_i)
 
 fig3b_alt <- ggplot() +
   geom_rect(data=inaccurate_levels, aes(fill="p < 1/N"), xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf, alpha=0.25) +
@@ -236,8 +236,8 @@ fig3b_alt <- ggplot() +
 fig3b_alt
 
 fig3_overall <- (fig3 | wrap_elements(full = fig3b_alt, clip = FALSE)) +plot_layout(widths=c(1,3))
-ggsave("Fig3_revised.png",fig3_overall,height=5,width=8,units="in")
-ggsave("Fig3_revised.pdf",fig3_overall,height=5,width=8,units="in")
+ggsave("fig3/Fig3_revised.png",fig3_overall,height=5,width=8,units="in")
+ggsave("fig3/Fig3_revised.pdf",fig3_overall,height=5,width=8,units="in")
 
 dat %>%
   group_by(N) %>% filter(b == min(b)) %>% select(N, b, q) %>% distinct() %>% 
@@ -245,7 +245,7 @@ dat %>%
 dput(labels)
 labels <- labels[c(1,6,2,7,5,3,4)]
 
-figS3 <- dat %>%
+figS1 <- dat %>%
   group_by(N) %>% filter(b == min(b)) %>%
   ungroup() %>%
   mutate(label = paste0("N=",N,", b=",b,", n=",q)) %>%
@@ -279,14 +279,14 @@ figS3 <- dat %>%
         strip.background = element_rect(fill="white",color="white"),
         legend.position="bottom",
         plot.tag = element_text(size=10)) 
-figS3
+figS1
 
-ggsave("FigS5.png",figS3,height=8,width=6,units="in")
-ggsave("FigS5.pdf",figS3,height=8,width=6,units="in")
+ggsave("fig3/FigS1.png",figS1,height=8,width=6,units="in")
+ggsave("fig3/FigS1.pdf",figS1,height=8,width=6,units="in")
 
 labels1 <- paste0("N=",unique(dat$N))
 
-figS4 <- dat %>% mutate(sample_diff = (p_sample - p_true)/p_true) %>%
+figSX <- dat %>% mutate(sample_diff = (p_sample - p_true)/p_true) %>%
   group_by(N) %>% filter(b == min(b)) %>%
   ungroup() %>%
   group_by(label, N, b, q, p_true) %>%
