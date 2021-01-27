@@ -176,14 +176,15 @@ inaccurate_levels <- dat5 %>% filter(as.numeric(group) < 1/N) %>% select(label, 
 
 dodge_x <- 0.2
 dat5 <- dat5 %>% mutate(x_dodged=as.numeric(name) + runif(n(), -dodge_x,dodge_x))
+dat5 <- dat5 %>% group_by(N,b,q,t,label,prev_group,group) %>% sample_frac(0.25)
 
 fig3b_alt <- ggplot() +
   geom_rect(data=inaccurate_levels, aes(fill="p < 1/N"), xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf, alpha=0.25) +
   geom_line(data=dat5,
-            aes(x=x_dodged,y=value,group=i),size=0.001,col="grey30") + 
+            aes(x=x_dodged,y=value,group=i),size=0.1,col="grey30") + 
   geom_point(data=dat5,shape=20,alpha=0.5,
              aes(col=name,x=x_dodged,y=value),
-             size=0.0001) + 
+             size=0.2) + 
   geom_line(data=dat_medians,aes(x=name,y=median_val,group=i,linetype="Median estimate"),col="orange",size=0.5) +
   geom_hline(data=dat5,aes(yintercept=as.numeric(group)),col="#EE0000FF",size=0.25,linetype="dashed") +
   geom_rect(data=dat5 %>% filter(name=="Estimated prevalence"),aes(xmin=as.numeric(name)-0.5,xmax=as.numeric(name)+0.5,ymin=5e-6,ymax=1),
