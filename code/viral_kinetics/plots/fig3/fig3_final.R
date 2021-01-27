@@ -176,7 +176,8 @@ inaccurate_levels <- dat5 %>% filter(as.numeric(group) < 1/N) %>% select(label, 
 
 dodge_x <- 0.2
 dat5 <- dat5 %>% mutate(x_dodged=as.numeric(name) + runif(n(), -dodge_x,dodge_x))
-dat5 <- dat5 %>% group_by(N,b,q,t,label,prev_group,group) %>% sample_frac(0.25)
+use_samps <-dat5 %>% dplyr::select(label, group,i) %>% distinct() %>% group_by(label, group) %>% sample_frac(0.25)
+dat5 <- dat5 %>% filter(i %in% use_samps$i)
 
 fig3b_alt <- ggplot() +
   geom_rect(data=inaccurate_levels, aes(fill="p < 1/N"), xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf, alpha=0.25) +
