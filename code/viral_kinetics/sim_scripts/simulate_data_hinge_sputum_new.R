@@ -44,6 +44,7 @@ times <- 0:365
 
 run_name <- "sputum"
 shift_twane <- 0 ## Can make the waning duration average shift_twane days longer
+savewd <- "~/Google Drive/nCoV/sims_for_brian/"
 
 ## Viral kinetics pars
 ## Change wd to local path
@@ -61,9 +62,9 @@ seir_pars <- c("R0"=2.5,"gamma"=1/7,"sigma"=1/6.4,"I0"=100,"recovered0"=0)
 ## UNCOMMENT THE COMMENTED LINES UP TO L84 TO RUN MULTIPLE SIMULATIONS IN PARALLEL
 #res <- foreach(simno=1:nsims,.packages = c("tidyverse","rethinking","odin","data.table")) %dopar% {
 # source("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/functions/odin_funcs.R")
-par_file <- paste0("sims/",run_name,"/used_pars_",run_name,"_",simno,".csv")
-vl_file <- paste0("sims/",run_name,"/seir_viral_loads_",run_name,"_",simno,".csv")
-obs_file <- paste0("sims/",run_name,"/seir_obs_viral_loads_",run_name,"_",simno,".csv")
+par_file <- paste0(savewd,run_name,"/used_pars_",run_name,"_",simno,".csv")
+vl_file <- paste0(savewd,run_name,"/seir_viral_loads_",run_name,"_",simno,".csv")
+obs_file <- paste0(savewd,run_name,"/seir_obs_viral_loads_",run_name,"_",simno,".csv")
 
 epidemic_process <- simulate_seir_process(population_n,seir_pars,times,ver="normal",beta_smooth=0.5,stochastic = TRUE)
 
@@ -83,7 +84,7 @@ simulated_data <- simulate_viral_loads_hinge(infection_times, times, chain, parT
 #simulated_data <- res[[1]][[1]]
 #infection_times_dat <- res[[1]][[2]]
 #epidemic_process <- res[[1]][[3]]
-#viral_loads <- simulated_data$viral_loads
+viral_loads <- simulated_data$viral_loads
 viral_loads_tmp <- viral_loads[1:100,]
 viral_loads_melted <- reshape2::melt(viral_loads_tmp)
 colnames(viral_loads_melted) <- c("i","t","viral_load")
@@ -114,10 +115,10 @@ p_obs <- ggplot(obs_vl_melted) +
   theme_bw() +
   ylab("Individual") + xlab("Time")
 
-pdf(paste0("sims/",run_name,"_observed_vls.pdf"),height=5,width=6)
+pdf(paste0(savewd,run_name,"_observed_vls.pdf"),height=5,width=6)
 p_obs
 dev.off()
-png(paste0("sims/",run_name,"_observed_vls.png"),height=5,width=6,res=300,units="in")
+png(paste0(savewd,run_name,"_observed_vls.png"),height=5,width=6,res=300,units="in")
 p_obs
 dev.off()
 
@@ -156,17 +157,17 @@ pC <- obs_vl_melted_tmp %>% ggplot() +
 load(paste0("sims/p_",run_name,".RData"))
 load(paste0("sims/p_onset_",run_name,".RData"))
 
-pdf(paste0("sims/",run_name,"_sim.pdf"),height=6,width=8)
+pdf(paste0(savewd,run_name,"_sim.pdf"),height=6,width=8)
 p_comb | pC
 dev.off()
 
-pdf(paste0("sims/",run_name,"_onset_sim.pdf"),height=6,width=8)
+pdf(paste0(savewd,run_name,"_onset_sim.pdf"),height=6,width=8)
 p_comb_onset | pC
 dev.off()
 
 p1 <- epidemic_process$incidence_plot + geom_vline(xintercept=plot_t,linetype="dashed")
 
-ggsave( paste0("sims/",run_name,"_observed_trajectories.png"),plot=p_obs_traj,height=5,width=6,dpi=300,units="in")
-ggsave(paste0("sims/",run_name,"_inc_plot.png"),plot=p1,height=4,width=7,dpi=300,units="in")
+ggsave( paste0(savewd,run_name,"_observed_trajectories.png"),plot=p_obs_traj,height=5,width=6,dpi=300,units="in")
+ggsave(paste0(savewd,run_name,"_inc_plot.png"),plot=p1,height=4,width=7,dpi=300,units="in")
 
 

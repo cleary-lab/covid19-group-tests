@@ -16,6 +16,7 @@ library(rethinking)
 setwd("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/")
 source("functions/simulation_functions.R")
 source("functions/model_funcs.R")
+source("functions/odin_funcs.R")
 source("functions/model_funcs_multivariate_hinge.R")
 
 cols <- ggsci::pal_lancet()(10)
@@ -61,7 +62,7 @@ fill_numbers <- expand_grid(t=seq(-30,tmax),y=0,i=seq_len(n_indiv))
 
 t_round <- 1
 t_by <- 0.1
-rerun_pc <- FALSE
+rerun_pc <- TRUE
 if(rerun_pc){
 
   store_all <- NULL
@@ -139,6 +140,11 @@ rect_dat2 <- data.frame(x1=-30,x2=50,y1=-5,y2=0)
 
 use_indivs <- c(2,3,7)
 
+## Revision: plot bar for points when below limit of quantification
+viral_loads_dat_bars <- viral_loads_dat[viral_loads_dat$i %in% use_indivs, ]
+viral_loads_dat_bars <- viral_loads_dat_bars %>% filter(obs < 2)
+
+
 pC <- ggplot() + 
   geom_rect(data=rect_dat,aes(ymin=y1,ymax=y2,xmin=x1,xmax=x2),fill="grey70",alpha=0.5) +
   geom_rect(data=rect_dat2,aes(ymin=y1,ymax=y2,xmin=x1,xmax=x2),fill="grey70",alpha=0.5) +
@@ -150,7 +156,10 @@ pC <- ggplot() +
   geom_ribbon(data=quants[quants$t <= 0 & quants_obs$i %in% use_indivs,],aes(x=t,ymin=lower,ymax=upper),fill="#0099B4FF",alpha=0.6) +
   geom_line(data=quants[quants$t <= 0 & quants_obs$i %in% use_indivs,], aes(x=t,y=mean),col="#0099B4FF") +
   
-  geom_point(data=viral_loads_dat[viral_loads_dat$i %in% use_indivs, ],aes(x=t,y=obs),size=0.5) + 
+  geom_point(data=viral_loads_dat[viral_loads_dat$i %in% use_indivs, ] %>% filter(obs > 2),aes(x=t,y=obs,shape="Positive, quantified"),size=0.5) + 
+  geom_segment(data=viral_loads_dat_bars,aes(x=t,xend=t,y=0,yend=2,col="Positive, unquantified")) +
+  scale_color_manual(values=c("Positive, unquantified"="black")) +
+  scale_shape_manual(values=c("Positive, quantified"=19)) +
   
   coord_cartesian(xlim=c(-14,35),ylim=c(0,12)) +
   scale_y_continuous(breaks=seq(0,12,by=2), expand=c(0,0)) +
@@ -163,7 +172,13 @@ pC <- ggplot() +
         axis.text=element_text(family="sans",size=8),
         axis.title=element_text(family="sans",size=8),
         legend.text = element_text(family="sans",size=8),
+        legend.spacing.y = unit(0.01, "cm"),
+        legend.margin = margin(0,0,0,0,unit="pt"),
         strip.background = element_blank(),
+        legend.position = "bottom",
+        legend.direction = "vertical",
+        legend.box="vertical",
+        legend.title=element_blank(),
         strip.text=element_blank(),
         panel.spacing=unit(0.5,"lines"),
         plot.margin = margin(0,0,-2,0,"mm")) +
@@ -176,7 +191,7 @@ pC <- ggplot() +
 population_n <- 12500000
 
 ## Sample size
-n <- 100000
+n <- 1000
 
 ## Duration of epidemic so far in days
 times <- 0:365
@@ -257,13 +272,13 @@ pB <- ggplot(viral_loads_melted1) +
         axis.ticks.y=element_blank(),
         axis.text.x=element_text(family="sans",size=8),
         axis.title=element_text(family="sans",size=8),
+        legend.position=c(0.9,0.8),
         legend.text = element_text(family="sans",size=6),
         legend.title=element_text(family="sans",size=8),
-        legend.position=c(0.9,0.8),
         plot.margin = margin(0,0,0,-10,"mm"),
         plot.background=element_blank()) +
   ylab("") + xlab("Time (days)")+
-  labs(tag="F")
+  labs(tag="E")
 
 indivs <- unique(viral_loads_melted1$i)
 i_subsamp <- indivs[225:250]
@@ -286,7 +301,7 @@ pB1 <- ggplot(viral_loads_melted1[viral_loads_melted1$i %in% i_subsamp,]) +
         plot.margin = margin(0,-10,0,0,"mm"),
         plot.background = element_blank()) +
   ylab("Individual") + xlab("Time (days)")+
-  labs(tag="D")
+  labs(tag="C")
 
 viral_prev <- apply(viral_loads[,1:(ncol(viral_loads)-1)], 2, function(x) length(x[x > 2])/length(x))
 
@@ -308,7 +323,7 @@ pA <- ggplot(pA_dat) + geom_line(aes(x=x,y=y,col=Variable)) +
         plot.margin = margin(0,5,0,0,"mm")) +
   ylab("Per capita infected") +
   xlab("")+
-  labs(tag="E")
+  labs(tag="D")
 
 viral_loads <- simulated_data$viral_loads %>% as_tibble
 viral_loads <- viral_loads %>% mutate(indiv=1:n())
@@ -358,19 +373,20 @@ tmp_p <- ggplot(melted_viral_loads_tmp[melted_viral_loads_tmp$value > 0,])+
         plot.margin = margin(0,-5,0,0,"mm"),
         panel.background = element_blank(),
         plot.background = element_blank())+
-  labs(tag="F")
+  labs(tag="E")
 
 right_p <- pA/pB + plot_layout(heights=c(1,2.5))
-left_p_bot <- (pC/p_hist) + plot_layout(heights=c(3,1))| pB1 
+left_p_bot <- ((pC+theme(legend.position=c(0.8,0.8))) + plot_spacer() + plot_layout(ncol=1,heights=c(20,1))) | pB1
+left_p_bot
 left_p <- (plot_spacer() / left_p_bot) + plot_layout(heights=c(1,1.5))
 
 #png("Fig2.png",height=6,width=8,res=300,units="in")
-left_p | right_p + plot_layout(widths=c(1.3,1))
+#left_p | right_p + plot_layout(widths=c(1.3,1))
 #dev.off()
 
 
-#pdf("Fig2_base.pdf",height=6,width=8)
-left_p | right_p + plot_layout(widths=c(1.3,1))
+#pdf("Fig2_base_revision2.pdf",height=6,width=8)
+#left_p | right_p + plot_layout(widths=c(1.3,1))
 #dev.off()
 
 chains1 <- load_mcmc_chains("~/Google Drive/nCoV/pool_samples/chains_swab/", parTab, TRUE, 10, burnin=1000000,multi=TRUE,chainNo=FALSE)
@@ -494,6 +510,11 @@ label_dat <- data.frame(label=wow, i=1:length(wow))
 
 
 use_indivs <- 1:9
+
+
+## Revision: plot bar for points when below limit of quantification
+viral_loads_dat_bars_supp <- viral_loads_dat %>% filter(obs < 2)
+
 pS1 <- ggplot() + 
   geom_rect(data=rect_dat,aes(ymin=y1,ymax=y2,xmin=x1,xmax=x2),fill="grey70",alpha=0.5) +
   geom_rect(data=rect_dat2,aes(ymin=y1,ymax=y2,xmin=x1,xmax=x2),fill="grey70",alpha=0.5) +
@@ -505,7 +526,10 @@ pS1 <- ggplot() +
   geom_ribbon(data=quants[quants$t <= 0 & quants_obs$i %in% use_indivs,],aes(x=t,ymin=lower,ymax=upper),fill="#0099B4FF",alpha=0.6) +
   geom_line(data=quants[quants$t <= 0 & quants_obs$i %in% use_indivs,], aes(x=t,y=mean),col="#0099B4FF") +
   
-  geom_point(data=viral_loads_dat[viral_loads_dat$i %in% use_indivs, ],aes(x=t,y=obs),size=0.5) + 
+  geom_point(data=viral_loads_dat[viral_loads_dat$i %in% use_indivs, ] %>% filter(obs > 2),aes(x=t,y=obs,shape="Positive, quantified"),size=0.5) + 
+  geom_segment(data=viral_loads_dat_bars_supp,aes(x=t,xend=t,y=0,yend=2,col="Positive, unquantified")) +
+  scale_color_manual(values=c("Positive, unquantified"="black")) +
+  scale_shape_manual(values=c("Positive, quantified"=19)) +
   
   geom_text(data=label_dat,aes(x=21,y=10,label=label),parse=FALSE,size=3) +
   coord_cartesian(xlim=c(-14,35),ylim=c(0,12)) +
@@ -520,14 +544,16 @@ pS1 <- ggplot() +
         axis.text=element_text(family="sans",size=8),
         axis.title=element_text(family="sans",size=8),
         legend.text = element_text(family="sans",size=8),
+        legend.title=element_blank(),
+        legend.position="bottom",
         strip.background = element_blank(),
         strip.text=element_blank(),
         plot.margin = margin(0,0,0,0,"mm")) +
   ylab("LOG10 RNA copies per swab") +
   xlab("Days post symptom onset") +
   facet_wrap(~i, ncol=3)+
-  labs(tag="A")
+  labs(tag="")
 
-#cairo_pdf("FigS1.pdf",height=5,width=8)
+cairo_pdf("FigS_fits.pdf",height=5,width=8)
 pS1
-#dev.off()
+dev.off()

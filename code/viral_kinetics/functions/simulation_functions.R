@@ -184,7 +184,7 @@ simulate_symptom_onsets <- function(infection_times, incubation_period_par1=1.62
 simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parTab,
                                        save_during=FALSE, save_block=10000,
                                        vl_file=NULL, obs_file=NULL, par_file=NULL,
-                                       add_noise=TRUE,max_vl=12,simno=NA){
+                                       add_noise=TRUE,max_vl=NULL,simno=NA){
   chain <- as.matrix(chain_input)
   
   ## Re-sample rows
@@ -294,8 +294,10 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
       print(i)
       if(save_during){
         ## Truncate viral loads and observations to be at most max_vl
-        viral_loads <- pmin(viral_loads, max_vl)
-        obs_dat <- pmin(obs_dat, max_vl)
+        if(!is.null(max_vl)){
+          viral_loads <- pmin(viral_loads, max_vl)
+          obs_dat <- pmin(obs_dat, max_vl)
+        }
         
         index <- 1
         
@@ -351,8 +353,10 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
       }
     }
   }
-  viral_loads <- pmin(viral_loads, max_vl)
-  obs_dat <- pmin(obs_dat, max_vl)
+  if(!is.null(max_vl)){
+    viral_loads <- pmin(viral_loads, max_vl)
+    obs_dat <- pmin(obs_dat, max_vl)
+  }
   return(list(viral_loads=viral_loads,obs=obs_dat, pars=used_pars))
 }
 

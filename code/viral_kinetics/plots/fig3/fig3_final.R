@@ -1,10 +1,15 @@
 library(tidyverse)
 library(patchwork)
 library(ggsci)
+library(lemon)
+AAAS_palette <- c("blue1"="#3B4992FF","red1"="#EE0000FF","green1"="#008B45FF",
+                  "purple1"="#631879FF","teal1"="#008280FF","red2"="#BB0021FF",
+                  "purple2"="#5F559BFF","purple3"="#A20056FF",
+                  "grey1"="#808180FF","black"="#1B1919FF")
 
-setwd("~/Documents/GitHub/covid19-group-tests/code/plots/")
+setwd("~/Documents/GitHub/covid19-group-tests/code/viral_kinetics/plots/")
 
-dat <- read_csv("summary.all_results.csv")
+dat <- read_csv("fig3/summary.all_results.csv")
 old_colnames <- colnames(dat)
 colnames(dat) <- c("N","b","q","t","p_true","p_sample","p_mle")
 
@@ -27,7 +32,7 @@ fig3 <- dat1 %>%
   geom_hline(aes(yintercept=1/N), linetype="dashed",col="grey50",size=0.5) +
   geom_vline(aes(xintercept=1/N), linetype="dashed",col="grey50",size=0.5) +
   geom_point(data=dat1,aes(x=p_true,y=p_mle),size=0.05,alpha=0.1,col="black",shape=19) +
-  geom_abline(slope=1,intercept=0,linetype="dashed",col="#ED0000FF",size=0.5) +
+  geom_abline(slope=1,intercept=0,linetype="dashed",col="#EE0000FF",size=0.5) +
   ylab("Estimated prevalence") +
   xlab("Prevalence in population (per capita)") +
   scale_y_log10(limits=c(5e-6,1), breaks=c(0.00001,0.0001,0.001,0.01,0.1,1), 
@@ -35,15 +40,17 @@ fig3 <- dat1 %>%
   scale_x_log10(limits=c(5e-6,1),breaks=c(0.00001,0.0001,0.001,0.01,0.1,1),
                 labels=c("0.00001",sapply(c(0.0001,0.001,0.01,0.1,1), function(x) sprintf("%g",x)))) +
   facet_wrap(~label,ncol=1) +
-  theme_light() +
-  theme(axis.text.x=element_text(size=6),
-        axis.text.y=element_text(size=6),
-        axis.title.y=element_text(size=8),
-        axis.title.x=element_text(size=8),
-        legend.title=element_text(size=8),
-        legend.text=element_text(size=6),
-        strip.text = element_text(size=8,color="white"),
-        strip.background = element_rect(fill="grey70",color="black"),
+  theme_classic() +
+  theme(axis.text.x=element_text(size=5),
+        axis.text.y=element_text(size=5),
+        axis.title.y=element_text(size=6),
+        axis.title.x=element_text(size=6),
+        legend.title=element_text(size=5),
+        legend.text=element_text(size=5),
+        panel.grid.major=element_line(size=0.1,color="grey50"),
+        strip.text = element_text(size=5,color="black",face="bold"),
+        #strip.background = element_rect(fill="grey70",color="black"),
+        strip.background = element_rect(fill="white",color="white"),
         legend.position="bottom",
         plot.tag = element_text(size=10)) +
   labs(tag="A")
@@ -83,14 +90,15 @@ fig3b <- dat2 %>%
   xlab("Prevalence range") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
-        strip.text.y = element_text(size=8,color="white"),
+        strip.text.y = element_text(size=7,color="white"),
+        #strip.background.y = element_rect(fill="grey70",color="black"),
         strip.background.y = element_rect(fill="grey70",color="black"),
         strip.text.x = element_text(size=6,color="black"),
         strip.background.x = element_blank(),
         axis.text.y=element_text(size=6),
-        axis.title.y=element_text(size=8),
-        axis.title.x=element_text(size=8),
-        legend.title=element_text(size=8),
+        axis.title.y=element_text(size=7),
+        axis.title.x=element_text(size=7),
+        legend.title=element_text(size=7),
         legend.text=element_text(size=6),
         plot.tag = element_text(size=10)) +
   scale_y_log10(limits=c(5e-6,1), breaks=c(0.00001,0.0001,0.001,0.01,0.1,1), 
@@ -148,15 +156,15 @@ dat5 <- bind_rows(dat_0.001, dat_0.01,dat_0.1,dat_1,dat_10) %>%
   pivot_longer(c(p_mle, p_true, p_sample))
 
 
-label_key <- c("p_true"="Prevalence in population","p_sample"="Prevalence in sample","p_mle"="Estimated prevalence")
+label_key <- c("p_true"="True prevalence","p_sample"="Prevalence in sample","p_mle"="Estimated prevalence")
 dat5$name <- label_key[dat5$name]
 dat5$name <- factor(dat5$name, levels=label_key)
 
 legend_label <- tibble(label=factor("N=576, b=6, n=96",levels=c("N=576, b=6, n=96","N=2304, b=24, n=96","N=18432, b=48, n=384")),
                        group="0.0001",
-                       text2=c("Prevalence in\npopulation","Prevalence in\nsample","Estimated\nprevalence"),
-                       text=factor(c("Prevalence in population","Prevalence in sample","Estimated prevalence"),
-                                   levels=c("Prevalence in population","Prevalence in sample","Estimated prevalence")))
+                       text2=c("True prevalence","Prevalence in\nsample","Estimated\nprevalence"),
+                       text=factor(c("True prevalence","Prevalence in sample","Estimated prevalence"),
+                                   levels=c("True prevalence","Prevalence in sample","Estimated prevalence")))
 
 dat5$group <- sprintf("%g", dat5$group)
 
@@ -166,47 +174,68 @@ dat_medians <- dat5 %>% group_by(group, name, label) %>%
 
 inaccurate_levels <- dat5 %>% filter(as.numeric(group) < 1/N) %>% select(label, group) %>% distinct()
 
-fig3b_alt <- dat5 %>% 
-  ggplot() +
+dodge_x <- 0.2
+dat5 <- dat5 %>% mutate(x_dodged=as.numeric(name) + runif(n(), -dodge_x,dodge_x))
+
+fig3b_alt <- ggplot() +
   geom_rect(data=inaccurate_levels, aes(fill="p < 1/N"), xmin=-Inf, xmax=Inf, ymin=-Inf, ymax=Inf, alpha=0.25) +
-  geom_line(aes(x=name,y=value,group=i),size=0.01,col="grey30") + 
-  geom_line(data=dat_medians,aes(x=name,y=median_val,group=i,linetype="Median"),col="#925E9FFF",size=0.5) +
-  geom_point(aes(x=name,y=value,col=name),size=0.1) + 
+  geom_line(data=dat5,
+            aes(x=x_dodged,y=value,group=i),size=0.001,col="grey30") + 
+  geom_point(data=dat5,shape=20,alpha=0.5,
+             aes(col=name,x=x_dodged,y=value),
+             size=0.0001) + 
+  geom_line(data=dat_medians,aes(x=name,y=median_val,group=i,linetype="Median estimate"),col="orange",size=0.5) +
+  geom_hline(data=dat5,aes(yintercept=as.numeric(group)),col="#EE0000FF",size=0.25,linetype="dashed") +
+  geom_rect(data=dat5 %>% filter(name=="Estimated prevalence"),aes(xmin=as.numeric(name)-0.5,xmax=as.numeric(name)+0.5,ymin=5e-6,ymax=1),
+            fill="white",alpha=0,color="#008B45FF",size=0.25) +
   #geom_text(data=legend_label,aes(x=text,label=text2),y=-1,col="#AD002AFF",
   #          size=1.5,angle=90) +
-  facet_grid(label~group,switch="x") +
-  scale_color_lancet(guide=guide_legend(title=NULL,#"Testing strategy",
-                                        override.aes = list(size=2,alpha=1),order=1)) +
+  facet_wrap(label~paste0("True prevalence = ", group),ncol=4,dir="h")+#,switch="x") +
+  #scale_color_lancet(guide=guide_legend(title=NULL,#"Testing strategy",
+  #                                      override.aes = list(size=2,alpha=1),order=1)) +
+  #scale_color_lancet(guide="none") +
+  #scale_color_manual(values=c("True prevalence"="#EE0000FF","Prevalence in sample"="#3B4992FF","Estimated prevalence"="#008B45FF"),guide="none")+
+  scale_color_manual(values=c("True prevalence"="#EE0000FF","Prevalence in sample"="black","Estimated prevalence"="black"),guide="none")+
   scale_linetype_discrete() +
   scale_fill_manual(values=c("grey70")) +
-  guides(linetype=guide_legend(title=NULL,order=2),fill=guide_legend(title=NULL,order=99)) +
-  theme_light() +
+  guides(linetype=guide_legend(title=NULL,order=2,fill="white"),fill=guide_legend(title=NULL,order=99,fill="white")) +
+  scale_x_discrete(labels=c("True prevalence","Prevalence in\nsample","Estimated\nprevalence"))+
+  theme_classic() +
   ylab("Prevalence per capita (log scale)") +
   xlab("Prevalence in population (per capita)") +
-  theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-        strip.text.y = element_text(size=6,color="white"),
-        strip.background.y = element_rect(fill="grey70",color="black"),
-        strip.text.x = element_text(size=6,color="black"),
-        strip.background.x = element_blank(),
-        axis.text.y=element_text(size=6),
-        axis.title.y=element_text(size=8),
-        axis.title.x=element_text(size=8),
-        legend.title=element_text(size=8),
-        legend.text=element_text(size=6),
+  theme(#axis.text.x=element_blank(),
+      axis.text.x=element_text(angle=45,hjust=1,size=6),
+      panel.grid.major = element_line(colour="grey50",size=0.1),
+        #axis.ticks.x=element_blank(),
+      strip.text= element_text(
+        margin = margin(t = 0, r = 0, b = 2, l = 0, unit = "pt"),
+        size=5,color="black",face="bold"),
+        #strip.text.y = element_text(size=5,color="black",face="bold"),
+        #strip.background.x = element_rect(size=0.1),
+        strip.background = element_rect(size=0.1,color="white"),
+        #strip.text.x = element_text(size=5,color="black",face='bold'),
+        axis.text.y=element_text(size=5),
+        axis.title.x=element_blank(),
+        axis.title.y=element_text(size=6),
+        #axis.title.x=element_text(size=8),
+        legend.title=element_text(size=6),
+        legend.text=element_text(size=5),
+      legend.key=element_rect(fill="white",color="white"),
+        legend.box.background = element_rect(fill="white",color="white"),
         legend.margin = margin(-5,-5,-5,-5),
-        legend.background = element_blank(),
-        legend.position="top",
+        legend.background = element_rect(fill="white",color="white"),
+        #legend.position="top",
+        legend.position=c(0.87,0.1),
         plot.background = element_blank(),
-        plot.tag = element_text(size=10)) +
+        plot.tag = element_text(size=10,face="bold")) +
   scale_y_log10(limits=c(5e-6,1), breaks=c(0.00001,0.0001,0.001,0.01,0.1,1), 
                 labels=c("<0.00001",sapply(c(0.0001,0.001,0.01,0.1,1), function(x) sprintf("%g",x)))) +
   labs(tag="B")
 fig3b_alt
 
-fig3_overall <- (fig3 | wrap_elements(full = fig3b_alt, clip = FALSE)) +plot_layout(widths=c(1,3.5))
-ggsave("Fig3.png",fig3_overall,height=4.5,width=8,units="in")
-ggsave("Fig3.pdf",fig3_overall,height=4.5,width=8,units="in")
+fig3_overall <- (fig3 | wrap_elements(full = fig3b_alt, clip = FALSE)) +plot_layout(widths=c(1,3))
+ggsave("Fig3_revised.png",fig3_overall,height=5,width=8,units="in")
+ggsave("Fig3_revised.pdf",fig3_overall,height=5,width=8,units="in")
 
 dat %>%
   group_by(N) %>% filter(b == min(b)) %>% select(N, b, q) %>% distinct() %>% 
@@ -235,16 +264,19 @@ figS3 <- dat %>%
   scale_x_log10(limits=c(5e-6,1),breaks=c(0.00001,0.0001,0.001,0.01,0.1,1),
                 labels=c("0.00001",sapply(c(0.0001,0.001,0.01,0.1,1), function(x) sprintf("%g",x)))) +
   facet_grid(label~name) +
-  theme_light() +
+  theme_classic() +
   theme(axis.text.x=element_text(size=6),
         axis.text.y=element_text(size=6),
         axis.title.y=element_text(size=8),
         axis.title.x=element_text(size=8),
-        legend.title=element_text(size=8),
+        legend.title=element_text(size=6),
         legend.text=element_text(size=6),
-        strip.text = element_text(size=6,color="white"),
-        strip.background = element_rect(fill="grey70",color="black"),
-        legend.position="bottom")
+        panel.grid.major=element_line(size=0.1,color="grey50"),
+        strip.text = element_text(size=5,color="black",face="bold"),
+        #strip.background = element_rect(fill="grey70",color="black"),
+        strip.background = element_rect(fill="white",color="white"),
+        legend.position="bottom",
+        plot.tag = element_text(size=10)) 
 figS3
 
 ggsave("FigS5.png",figS3,height=8,width=6,units="in")
