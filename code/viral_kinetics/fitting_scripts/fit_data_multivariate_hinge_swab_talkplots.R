@@ -52,6 +52,9 @@ p1 <- ggplot(viral_loads_dat %>% filter(i %in% 1:3)) +
   xlab("Days since symptom onset") +
   theme_classic()
 
+ggsave(p1, filename="~/Google Drive/Presentations/Pooling paper/raw_data.png",
+       width=12,height=3,dpi=300,units="in")
+
 viral_loads_dat <- viral_loads_dat[,c("t","obs","i")]
 viral_loads_dat$t <- viral_loads_dat$t
 
@@ -208,8 +211,8 @@ p2 <- ggplot(viral_loads_dat %>% filter(i %in% 1:3)) +
   ylab("log10 RNA copies/swab") +
   xlab("Days since symptom onset") +
   theme_classic()
-ggsave(p2, "~/Google Drive/Presentations/Pooling paper/single_draw.png",
-       width=10,height=4,dpi=300,units="in")
+ggsave(p2, filename="~/Google Drive/Presentations/Pooling paper/single_draw.png",
+       width=12,height=3,dpi=300,units="in")
 p2
 
 p3 <- ggplot(viral_loads_dat %>% filter(i %in% 1:3)) + 
@@ -225,8 +228,8 @@ p3 <- ggplot(viral_loads_dat %>% filter(i %in% 1:3)) +
   theme_classic()
 p3
 
-ggsave(p3, "~/Google Drive/Presentations/Pooling paper/repeat_draw.png",
-       width=10,height=4,dpi=300,units="in")
+ggsave(p3, filename="~/Google Drive/Presentations/Pooling paper/repeat_draw.png",
+       width=12,height=3,dpi=300,units="in")
 
 quants <- store_all %>% group_by(i, t) %>%
   summarize(lower=quantile(y,0.025),
@@ -501,3 +504,16 @@ dev.off()
 pdf(paste0("plots/swab_sims.pdf"),width=8,height=8)
 p_draws/prop_detect_onset
 dev.off()
+
+
+pop_dist <- ggplot(data=data.frame(x=c(7,12)),aes(x=x)) + 
+  geom_area(stat="function",na.rm=TRUE,fun = dnorm, n = 101,
+            args = list(mean = 9.14, sd = 0.246),fill="orange",col="black") +
+  geom_vline(xintercept=c(9.3,9.46,9.13), linetype="dashed",col="red",size=0.75) +
+  scale_y_continuous(expand=c(0,0)) +
+  xlab("alpha") +
+  ylab("Density") +
+  theme_classic()
+pop_dist
+ggsave(plot=pop_dist,filename="~/Google Drive/Presentations/Pooling paper/pop_dist_alpha.png",
+       height=3,width=8,units="in",dpi=300)

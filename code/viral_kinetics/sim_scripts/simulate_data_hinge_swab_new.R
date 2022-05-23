@@ -38,7 +38,7 @@ simno <- 1
 population_n <- 12500000
 
 ## Sample size
-n <- 12500000
+n <- 10000
 ## Duration of epidemic in days
 times <- 0:365
 run_name <- "swab"
@@ -73,7 +73,7 @@ infection_times_dat <- tibble(i=seq_along(infection_times), inf_time=infection_t
 ## Simulate viral loads for the sample population
 
 ## <0.2% of simulated viral loads are 11 or higher
-simulated_data <- simulate_viral_loads_hinge(infection_times, times, chain, parTab,save_during=TRUE,
+simulated_data <- simulate_viral_loads_hinge(infection_times, times, chain, parTab,save_during=FALSE,
                                              save_block=50000,vl_file=vl_file,obs_file=obs_file,par_file=par_file,
                                              add_noise=TRUE,max_vl=11,simno=NA)
 #list(simulated_data, infection_times_dat, epidemic_process)

@@ -184,7 +184,8 @@ simulate_symptom_onsets <- function(infection_times, incubation_period_par1=1.62
 simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parTab,
                                        save_during=FALSE, save_block=10000,
                                        vl_file=NULL, obs_file=NULL, par_file=NULL,
-                                       add_noise=TRUE,max_vl=NULL,simno=NA){
+                                       add_noise=TRUE,max_vl=NULL,simno=NA,
+                                       symptom_surveillance=FALSE,confirm_delays=NULL){
   chain <- as.matrix(chain_input)
   
   ## Re-sample rows
@@ -198,6 +199,11 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
   n_save <- n
   if(save_during){
     n_save <- save_block
+  }
+  
+  ## If symptom based surveillance, only record the viral load at the observation time
+  if(symptom_surveillance){
+    times <- 1
   }
   
   ## Storage of simulated trajectories and used parameters
@@ -269,7 +275,10 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
       
       ## Create model function and solve
       pred <- model_funcs[[choose_indiv]](pars_use)
-      
+      if(symptom_surveillance){
+        obs_time <- round(pars_use["incu"] + confirm_delays[i])
+        pred <- pred[obs_time]
+      }
       if(add_noise){
         ## Add observation error
         obs <- pred + rnorm(length(pred), 0, pars_use["sd"])
@@ -279,7 +288,9 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
         
         obs[obs_below_lod] <- pars_use["lod"]
         obs[obs_unquantifiable] <- runif(length(obs[obs_unquantifiable]), pars_use["lod"], pars_use["limit_quantification"])
-        obs[which(times < pars_use["tshift"])] <- 0
+        if(!symptom_surveillance){
+          obs[which(times < pars_use["tshift"])] <- 0
+        }
         obs_dat[index,] <- obs
       } else {
         pred[pred < pars_use["lod"]] <- pars_use["lod"]
@@ -357,6 +368,8 @@ simulate_viral_loads_hinge <- function(infection_times, times, chain_input, parT
     viral_loads <- pmin(viral_loads, max_vl)
     obs_dat <- pmin(obs_dat, max_vl)
   }
+  colnames(viral_loads) <- times
+  colnames(obs_dat) <- times
   return(list(viral_loads=viral_loads,obs=obs_dat, pars=used_pars))
 }
 
